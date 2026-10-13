@@ -32,11 +32,13 @@ Then open `http://localhost:8080/`.
 
 ## Try the workflow
 
-1. Choose a scenario and run its baseline.
+1. Choose a scenario, adjust the controls, and click **Run current settings** (or **Scan current scene** below the scene). Both scan exactly the displayed configuration. **Reset & run baseline** is a separate action that restores clear conditions before running.
 2. Run **AUTO STRESS SUITE** to measure a sequence of increasing difficulty.
 3. Use **FIND BREAKING POINT** to identify the first tested level that misses the selected quality thresholds. Passing the tested range does not establish safety beyond that range.
 4. Use **COMPARE MODELS** to compare A and B with identical scenario settings and seed.
 5. Inspect the scene, curve, failure explanation, and history; open the report and download JSON or CSV.
+
+The scan reveals simulated detections at their observation times. Pause freezes the scene and scan; resume continues the same run. Single-run playback takes 3.2 seconds; the configured observation window remains the simulated duration used for scoring.
 
 The session history records completed runs. Export the report before leaving the page if you need to retain it. Exported data identifies the results as synthetic and includes the configuration needed to interpret the measurements.
 
@@ -68,12 +70,13 @@ engine.js               Scenario data and deterministic scoring
 scene.js                Interactive synthetic scene rendering
 app.js                  Application state, runs, reports, and exports
 tests/engine.test.cjs    Automated engine checks
+tests/scan.test.cjs      Run, pause, reset, and scene regression checks
 ```
 
-Run the engine checks with a current Node.js installation:
+Run the automated checks with a current Node.js installation:
 
 ```sh
-node --test tests/engine.test.cjs
+node --test tests/*.test.cjs
 ```
 
 Also check the browser flow after changes: scenario switching, run/pause/reset, sensor switching, automatic suite, breaking-point search, comparison, exports, keyboard use, and narrow-screen layout. Engine tests alone do not verify presentation or browser interactions.
