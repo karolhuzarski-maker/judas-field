@@ -7,7 +7,7 @@
   const pct = n => `${Math.round(n * 100)}%`;
   const secs = n => n == null ? '—' : `${n.toFixed(1)} <small>s</small>`;
   const badge = s => `<span class="badge ${s.toLowerCase()}">${s}</span>`;
-  const state = { config: {...E.defaults}, result: null, playbackResult: null, history: [], series: [], seriesLabel: '', running: false, paused: false, progress: 0, queue: [], queueIndex: 0, elapsed: 0, lastFrame: 0, duration: 3200, stopAtFailure: false, view: 'bench', sessionId: new Date().toISOString(), sequence: 0, raf: 0 };
+  const state = { config: {...E.defaults}, result: null, playbackResult: null, history: [], series: [], seriesLabel: '', running: false, paused: false, progress: 0, queue: [], queueIndex: 0, elapsed: 0, lastFrame: 0, duration: 6000, stopAtFailure: false, view: 'bench', sessionId: new Date().toISOString(), sequence: 0, raf: 0 };
   const ranges = [
     ['altitude','Observation altitude',15,120,1,'m','15 m','120 m'],
     ['speed','Fly-by speed',0,12,1,'m/s','HOVER','12 m/s'],
@@ -103,20 +103,26 @@
       <div class="report-warning"><b>SIMULATED RESULTS — synthetic: true</b><br>No real AI inference. ${esc(E.limitations[2])}<br>Transit: 120 m / 12 m/s = 10 s. TTAI = transit + time to required stable detections + profile processing. It is unavailable when thresholds fail.<br>Blind benchmark is not active. No diagnosis, triage, treatment recommendations or certification.</div>`;
   }
   function refresh(){syncControls();renderScene();renderOutput();renderCurve();renderHistory();if(state.view==='report')renderReport();}
-  function setConfig(key,value){if(state.running)return;state.config=E.normalize({...state.config,[key]:value});state.result=null;state.playbackResult=null;state.progress=0;$('progress').style.width='0%';$('run-status').textContent='CONFIGURATION UPDATED';$('run-detail').textContent='Run this configuration to measure the result.';syncControls();renderScene();renderOutput();}
+  function setConfig(key,value){if(state.running)return;state.config=E.normalize({...state.config,[key]:value});state.result=null;state.playbackResult=null;state.progress=0;$('progress').style.width='0%';$('run-status').textContent='CONFIGURATION UPDATED';$('run-detail').textContent='Scan the current scene. Fly-by speed controls the scan pace.';syncControls();renderScene();renderOutput();}
+  function playbackDuration(config,quick=false) {
+    // Visual timing only: a finite hover sweep, then progressively faster fly-bys.
+    // Scoring and detection times still use the configured observation window.
+    const speed=Math.max(0,Math.min(12,Number(config.speed)||0));
+    return 6000/(1+speed/4)*(quick?0.4:1);
+  }
   function start(configs,label,kind='suite',stop=false) {
     if(state.running)return;
-    state.sequence++;state.queue=configs.map(c=>({...c}));state.queueIndex=0;state.series=[];state.seriesLabel=label;state.stopAtFailure=stop;state.kind=kind;state.paused=false;state.elapsed=0;state.lastFrame=0;state.lastPaint=0;state.duration=configs.length>1?650:3200;state.result=null;state.config={...state.queue[0]};state.progress=0;state.playbackResult=E.simulate(state.config);
+    state.sequence++;state.queue=configs.map(c=>({...c}));state.queueIndex=0;state.series=[];state.seriesLabel=label;state.stopAtFailure=stop;state.kind=kind;state.paused=false;state.elapsed=0;state.lastFrame=0;state.lastPaint=0;state.result=null;state.config={...state.queue[0]};state.duration=playbackDuration(state.config,state.queue.length>1);state.progress=0;state.playbackResult=E.simulate(state.config);
     setBusy(true);refresh();announce(`${label} started.`);state.raf=requestAnimationFrame(tick);
   }
   function tick(now) {
     if(!state.running)return;
     const delta=state.lastFrame?Math.max(0,now-state.lastFrame):0;state.lastFrame=now;
-    if(!state.paused){state.elapsed+=delta;state.progress=Math.min(1,state.elapsed/state.duration);$('progress').style.width=`${state.progress*100}%`;$('run-status').textContent=`${state.seriesLabel.toUpperCase()} · ${state.queueIndex+1}/${state.queue.length}`;$('run-detail').textContent=`Model ${state.config.model} · ${state.config.observation} s observation · accelerated playback`;
-      if(!state.lastPaint||now-state.lastPaint>75||state.progress===1){renderScene();state.lastPaint=now;}
+    if(!state.paused){state.elapsed+=delta;state.progress=Math.min(1,state.elapsed/state.duration);$('progress').style.width=`${state.progress*100}%`;$('run-status').textContent=`${state.seriesLabel.toUpperCase()} · ${state.queueIndex+1}/${state.queue.length}`;$('run-detail').textContent=`Model ${state.config.model} · ${state.config.observation} s observation · ${state.config.speed===0?'hover scan':state.config.speed+' m/s fly-by'}${state.queue.length>1?' · quick preview':''}`;
+      if(!state.lastPaint||now-state.lastPaint>32||state.progress===1){renderScene();state.lastPaint=now;}
       if(state.progress>=1){const result={...state.playbackResult,runNumber:state.history.length+1,recordedAt:new Date().toISOString(),sequenceId:state.sequence,step:state.kind==='comparison'?Math.floor(state.queueIndex/2)+1:state.queueIndex+1,kind:state.kind,plan:state.seriesLabel};state.result=result;state.history.push(result);state.series.push(result);state.queueIndex++;refresh();
         if(state.queueIndex>=state.queue.length||(state.stopAtFailure&&result.status!=='PASS')){setBusy(false);$('run-status').textContent=state.stopAtFailure&&result.status!=='PASS'?'BREAKING POINT FOUND':'TEST COMPLETE';$('run-detail').textContent=`${state.series.length} completed run${state.series.length===1?'':'s'} · ${result.tp}/${result.persons.length} people detected in last run`;renderCurve();renderScene();announce(`${state.seriesLabel} complete. ${result.status}. ${result.tp} of ${result.persons.length} detected.`);if(state.view==='report')renderReport();return;}
-        state.elapsed=0;state.progress=0;state.config={...state.queue[state.queueIndex]};state.result=null;state.playbackResult=E.simulate(state.config);$('progress').style.width='0%';syncControls();renderScene();renderOutput();}
+        state.elapsed=0;state.progress=0;state.config={...state.queue[state.queueIndex]};state.duration=playbackDuration(state.config,state.queue.length>1);state.result=null;state.playbackResult=E.simulate(state.config);$('progress').style.width='0%';syncControls();renderScene();renderOutput();}
     }
     state.raf=requestAnimationFrame(tick);
   }

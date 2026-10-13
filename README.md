@@ -38,7 +38,7 @@ Then open `http://localhost:8080/`.
 4. Use **COMPARE MODELS** to compare A and B with identical scenario settings and seed.
 5. Inspect the scene, curve, failure explanation, and history; open the report and download JSON or CSV.
 
-The scan reveals simulated detections at their observation times. Pause freezes the scene and scan; resume continues the same run. Single-run playback takes 3.2 seconds; the configured observation window remains the simulated duration used for scoring.
+The scan reveals simulated detections at their observation times. Pause freezes the scene and scan; resume continues the same run. **Fly-by speed controls the pace of the scan line:** hover (0 m/s) takes 6 seconds, 4 m/s takes 3 seconds, and 12 m/s takes 1.5 seconds. Automatic suites use a quicker preview with the same speed relationship, recalculated for each step. This changes visual playback; the configured observation window remains the simulated duration used for scoring.
 
 The session history records completed runs. Export the report before leaving the page if you need to retain it. Exported data identifies the results as synthetic and includes the configuration needed to interpret the measurements.
 

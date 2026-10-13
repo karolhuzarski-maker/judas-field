@@ -52,6 +52,34 @@ test('both manual Run controls preserve the configured scene through scan, pause
   }
 });
 
+test('fly-by speed makes manual scans visibly faster while hover still completes',()=>{
+  for(const [speed,duration,progressAtOneSecond] of [[0,6000,1/6],[4,3000,1/3],[12,1500,2/3]]){
+    const ui=app();ui.set('speed',speed);ui.set('observation',20);
+    const config={...ui.scene.config};ui.click('run-top');ui.frame(100);ui.frame(1100);
+    assert.ok(Math.abs(ui.scene.options.progress-progressAtOneSecond)<1e-10,`Speed ${speed}: scan progress after one second`);
+    assert.ok(Math.abs(parseFloat(ui.get('progress').style.width)/100-progressAtOneSecond)<1e-10,'Progress bar follows the scan');
+    assert.equal(ui.get('history-count').textContent,'00');
+    ui.frame(100+duration-1);
+    assert.equal(ui.scene.options.playback,true);assert.equal(ui.get('history-count').textContent,'00');
+    ui.frame(100+duration+1);
+    assert.equal(ui.scene.options.playback,false);assert.equal(ui.get('history-count').textContent,'01');
+    assert.equal(ui.get('progress').style.width,'100%');
+    assert.deepEqual(JSON.parse(JSON.stringify(ui.scene.result.config)),config);
+    const expected=engine.simulate(config);
+    for(const key of ['tp','fp','fn','recall','precision','ttfd','ttai'])assert.equal(ui.scene.result[key],expected[key],`Playback timing preserves ${key}`);
+  }
+});
+
+test('paused time does not consume the remaining speed-dependent scan duration',()=>{
+  const ui=app();ui.set('speed',4);ui.click('run');ui.frame(100);ui.frame(1100);
+  const progress=ui.scene.options.progress;ui.click('pause');ui.frame(8100);
+  assert.equal(ui.scene.options.progress,progress);assert.equal(ui.get('history-count').textContent,'00');
+  ui.click('pause');ui.frame(8600);
+  assert.equal(ui.scene.options.progress,0.5);assert.equal(ui.get('history-count').textContent,'00');
+  ui.frame(10099);assert.equal(ui.scene.options.playback,true);assert.equal(ui.get('history-count').textContent,'00');
+  ui.frame(10101);assert.equal(ui.scene.options.playback,false);assert.equal(ui.get('history-count').textContent,'01');
+});
+
 test('only the explicitly labelled baseline action restores clear conditions',()=>{
   const ui=app();ui.domain('SAR');ui.set('altitude',116);ui.set('smoke',70);ui.set('model','B');ui.set('seed',123);
   ui.click('baseline');
@@ -88,7 +116,24 @@ test('automatic suite prepares a fresh scan for each planned configuration',()=>
   const plan=engine.suite(ui.scene.config,'altitude');ui.click('auto');ui.frame(100);
   plan.forEach((config,i)=>{
     assert.deepEqual(ui.scene.config,config);assert.equal(ui.scene.options.progress,0);
-    ui.frame(100+(i+1)*700);
+    ui.frame(100+(i+1)*2401);
   });
   assert.equal(ui.get('history-count').textContent,String(plan.length).padStart(2,'0'));assert.equal(ui.scene.options.playback,false);
+});
+
+test('automatic speed ladder uses the speed of every step and accelerated suite playback',()=>{
+  const ui=app();ui.get('preset').value='speed';ui.get('preset').selectedOptions=[{text:'Speed ladder'}];
+  const plan=engine.suite(ui.scene.config,'speed');
+  // Expected suite durations for 0, 2, 5, 8, 10 and 12 m/s.
+  const durations=[2400,1600,3200/3,800,4800/7,600];
+  ui.click('auto');let now=100;ui.frame(now);
+  plan.forEach((config,i)=>{
+    assert.deepEqual(ui.scene.config,config);assert.equal(ui.scene.options.progress,0);
+    ui.frame(now+=durations[i]/2);
+    assert.ok(Math.abs(ui.scene.options.progress-0.5)<1e-10,`Step ${i+1} advances at ${config.speed} m/s`);
+    assert.equal(ui.get('history-count').textContent,String(i).padStart(2,'0'));
+    ui.frame(now+=durations[i]/2+1);
+    assert.equal(ui.get('history-count').textContent,String(i+1).padStart(2,'0'));
+  });
+  assert.equal(ui.scene.options.playback,false);assert.equal(ui.get('progress').style.width,'100%');
 });
