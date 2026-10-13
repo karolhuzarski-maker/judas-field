@@ -1,0 +1,25 @@
+# Operating system and editor files
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local tools and temporary output
+node_modules/
+coverage/
+playwright-report/
+test-results/
+*.log
+work/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Source briefs are not part of the public demo
+*specyfikacja*
+*specification*
