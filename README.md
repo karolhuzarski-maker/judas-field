@@ -1,100 +1,83 @@
-# JUDAS FIELD
+# JUDAS FIELD v0.2
 
 **FIND YOUR AI'S BREAKING POINT.**  
-An interactive, synthetic stress-test demonstrator by **GRIM SIGNAL LABS**.
+Independent stress testing for Physical AI in unfamiliar real-world conditions. By **GRIM SIGNAL LABS**.
 
-Repository: [karolhuzarski-maker/judas-field](https://github.com/karolhuzarski-maker/judas-field)  
-GitHub Pages address: [karolhuzarski-maker.github.io/judas-field/](https://karolhuzarski-maker.github.io/judas-field/)
+[Live demo](https://karolhuzarski-maker.github.io/judas-field/?v=0.2.0) · [Repository](https://github.com/karolhuzarski-maker/judas-field)
 
-## What this demo does
+We help AI developers discover where their models fail before those failures happen in operational environments. Initial specialization: MCI, TCCC and SAR.
 
-Explore how changing observation conditions affects two illustrative person-detection model profiles. Choose **MCI**, **TCCC**, or **SAR**, run a baseline, increase stress manually or with an automatic suite, inspect the first failed quality threshold, compare the profiles, and export a session report.
+## Two clearly separated workflows
 
-- **MCI — Mass Casualty Incidents:** a synthetic road-incident scene with several people and obstacles.
-- **TCCC — Tactical Casualty Assessment:** a staged observation scene illustrating the limits of visible information. It does not diagnose injuries, assign triage categories, assess breathing, or recommend treatment.
-- **SAR — Search and Rescue:** a woodland search scene with occlusion and synthetic environmental distractions.
+**SYNTHETIC MODEL DEMO** illustrates a stress-testing methodology using deterministic mathematical profiles A/B. No neural network or real inference is running. Choose MCI (5 subjects), TCCC / Tactical Casualty Observation (4), or SAR (3); change conditions; scan; run a stress suite; find the first tested non-pass; compare identical A/B conditions; export the session.
 
-Altitude, observation fly-by speed, occlusion, smoke/fog, observation time, lighting, and RGB/thermal sensor choice affect the simulation. **Model A / Baseline** and **Model B / Robust** are mathematical profiles, not deployed AI systems or measured commercial models. Results are repeatable for the same scenario, profile, settings, and seed.
+**IMPORTED MODEL PREDICTIONS** evaluates an external detector's existing JSON or CSV predictions against the fixed annotated reference image. Files are read locally and never uploaded. Download a reference image, run your detector elsewhere, then import its predictions. This workflow computes actual one-to-one IoU matches on those supplied boxes; it does not run the model. Both imported sets must use the same scenario, sensor and thresholds.
 
-**SYNTHETIC R&D DEMO — no real AI inference.** All scenes, people, detections, confidence values, and timing estimates are simulated. This small sample is intended to explain a testing workflow; it does not establish real-world performance, statistical reliability, certification, or operational suitability. Ground truth and scoring are visible in the browser source. A blind benchmark is not active in this demo.
+Scores on these small synthetic examples are not evidence of real-world performance, certification or independent blind validation. No diagnosis, breathing assessment, triage or treatment recommendations are made.
 
-## Run locally
+## Guided presentation
 
-Open `index.html` in a modern browser. The app uses local HTML, CSS, and classic JavaScript scripts, with no backend, installation, API keys, or external libraries.
+Click **RUN 60-SECOND DEMO**. In approximately 60 seconds of active viewing it introduces SAR, runs a real baseline, increases occlusion, explains the first failed acceptance level, runs matched A/B tests and opens the AI Stress Report. It records 19 completed simulated runs in the existing application history. Skip advances narration after the current scoring finishes. Restart cancels the previous flow; End demo retains completed runs only. Hidden-tab time does not consume narration, so leaving the tab can lengthen the total wall-clock presentation.
 
-Alternatively, serve the repository directory using a static server, for example:
+## Field imagery and annotations
+
+Six optimized WebP assets provide photorealistic generated RGB scenes and corresponding synthetic thermal representations at 1672 × 941 pixels. [Imagery provenance](docs/imagery.md) and [generation prompts](assets/scene-prompts.json) document their origin. `scenarios.js` contains image-specific normalized `[x, y, width, height]` annotations reviewed across the paired views. Ground truth, model predictions, misses and false alarms use separate layers in a shared image-coordinate frame.
+
+Thermal variants are illustrative, not calibrated radiometric data or measured sensor registration. Small generative contour variations are included in shared annotation margins. They do not show through solid occluders. Real registered DJI RGB/thermal field recordings are a future data source.
+
+Altitude zooms the whole image and overlays together. Motion, localized smoke, depth-varying fog, RGB darkness and texture-based partial occlusion illustrate the selected stressors. These effects and the scoring equations are not a physically validated optical simulator and have not been fitted to the images.
+
+**Fly-by speed controls scan pace:** hover takes 6 seconds, 4 m/s takes 3 seconds, and 12 m/s takes 1.5 seconds. Suites use a faster preview with the same relationship recalculated per step. Pause freezes progress and camera drift. The configured observation window remains the simulated duration used for scoring.
+
+**Run current settings** and **Scan current scene** preserve the displayed configuration. **Reset & run baseline** is the explicit action that restores clear conditions. Completed session history is retained until the page is closed or reloaded; export it before leaving when needed.
+
+## Import predictions
+
+Read the full [schema and matching rule](docs/predictions.md). A [downloadable MCI JSON example](examples/mci-predictions.json) is also included; the interface creates an example for any selected scenario and sensor. Examples copy reference boxes to demonstrate the format and are explicitly identified as such, not as real inference.
+
+- Coordinates are normalized `[x, y, width, height]`, relative to the **original full reference image**.
+- Default confidence threshold: 0.25. Default IoU threshold: 0.50. Both are recorded in reports.
+- Predictions are processed by descending confidence. Each takes the highest-IoU unmatched reference above the IoU threshold. Confidence ties keep input order; IoU ties keep manifest order.
+- Duplicate or unmatched predictions are FP; unmatched reference subjects are FN. Below-confidence predictions are excluded and audited.
+- Precision = TP / (TP + FP), defined as 0 with no retained predictions. Recall = TP / (TP + FN).
+- Malformed data, incompatible schemas/sensors/scenarios, invalid boxes, repeated IDs and excessive files are rejected with actionable messages. Limits: 2 MiB and 2,000 predictions per file.
+- No degradation curve or breaking point is inferred from one imported image. Multi-condition claims require a controlled dataset.
+
+## Reports and benchmark scope
+
+The **AI Stress Report** includes test/session identification, conditions, source, sensor, TP/FP/FN, precision/recall, first tested quality-threshold failure, degradation curves, matched comparisons, worst cases, validation priorities and provenance. JSON and CSV preserve the underlying audit; Print / save PDF uses the browser print dialog. Imported results have their own clearly labelled report and exports.
+
+The open examples and references are available now. **Blind benchmark is planned**, not active: all current annotations and scoring remain publicly visible in browser source. A future independent service requires held-out scenarios and field data.
+
+The pilot partner contact action currently opens a GitHub enquiry. It can be changed to a confirmed business email or form without altering the application.
+
+## Local use and tests
+
+Open `index.html` in a modern browser, or serve this folder with any static server. There is no build step, backend, API key, runtime dependency, analytics or third-party data upload.
 
 ```sh
 python -m http.server 8080
-```
-
-Then open `http://localhost:8080/`.
-
-## Try the workflow
-
-1. Choose a scenario, adjust the controls, and click **Run current settings** (or **Scan current scene** below the scene). Both scan exactly the displayed configuration. **Reset & run baseline** is a separate action that restores clear conditions before running.
-2. Run **AUTO STRESS SUITE** to measure a sequence of increasing difficulty.
-3. Use **FIND BREAKING POINT** to identify the first tested level that misses the selected quality thresholds. Passing the tested range does not establish safety beyond that range.
-4. Use **COMPARE MODELS** to compare A and B with identical scenario settings and seed.
-5. Inspect the scene, curve, failure explanation, and history; open the report and download JSON or CSV.
-
-The scan reveals simulated detections at their observation times. Pause freezes the scene and scan; resume continues the same run. **Fly-by speed controls the pace of the scan line:** hover (0 m/s) takes 6 seconds, 4 m/s takes 3 seconds, and 12 m/s takes 1.5 seconds. Automatic suites use a quicker preview with the same speed relationship, recalculated for each step. This changes visual playback; the configured observation window remains the simulated duration used for scoring.
-
-The session history records completed runs. Export the report before leaving the page if you need to retain it. Exported data identifies the results as synthetic and includes the configuration needed to interpret the measurements.
-
-## Reading the results
-
-| Metric | Meaning |
-| --- | --- |
-| TP | A synthetic person correctly detected. |
-| FN | A synthetic person missed. `TP + FN` equals the number of people in the scenario. |
-| FP | A synthetic detection that does not correspond to a person. |
-| Precision | `TP / (TP + FP)`; the engine handles an empty detection set explicitly. |
-| Recall | `TP / (TP + FN)`; the proportion of present people detected. |
-| PASS | Meets the selected minimum recall and maximum FP limits. |
-| DEGRADED / FAIL | Does not meet the complete quality requirement; severity depends on the simulated outcome. |
-| First breaking point | The first tested configuration that does not pass the selected thresholds. |
-| Time to first detection | Simulated elapsed observation time until the first stable detection; unavailable when nothing is detected. |
-| Observation time | The configured observation window. |
-| Transit / flight time | A separate illustrative travel-time estimate, not an aircraft specification. |
-| Time to actionable information | The defined total timing estimate when the minimum information requirement is met; otherwise **NOT ACHIEVED**. |
-
-The app and report expose the test conditions, sample size, seed, and timing assumptions. A thermal palette is a synthetic visual representation, not a calibrated thermal image. Suggestions in the failure explanation are priorities for further validation, not proven remedies.
-
-## Project structure
-
-```text
-index.html              Interface and page structure
-style.css               Responsive styles
-engine.js               Scenario data and deterministic scoring
-scene.js                Interactive synthetic scene rendering
-app.js                  Application state, runs, reports, and exports
-tests/engine.test.cjs    Automated engine checks
-tests/scan.test.cjs      Run, pause, reset, and scene regression checks
-```
-
-Run the automated checks with a current Node.js installation:
-
-```sh
 node --test tests/*.test.cjs
 ```
 
-Also check the browser flow after changes: scenario switching, run/pause/reset, sensor switching, automatic suite, breaking-point search, comparison, exports, keyboard use, and narrow-screen layout. Engine tests alone do not verify presentation or browser interactions.
+Tests cover deterministic scoring, import validation, IoU matching, comparisons, report audit, reference geometry, separate layers, scan timing/pause/reset, suite transitions and guided flow timing/cancellation. Browser QA remains necessary for image decoding, file pickers, downloads, responsive layout and the complete presentation.
 
-## GitHub Pages
+## Files
 
-This repository is a static site. In **Settings → Pages**, choose **Deploy from a branch**, branch **main**, and folder **/ (root)**. No build command or package installation is required. GitHub documents these options in [Configuring a publishing source](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
+| File / directory | Responsibility |
+| --- | --- |
+| index.html, style.css | Existing dashboard, navigation, business presentation and print styles |
+| engine.js | Original deterministic synthetic scoring equations |
+| scenarios.js | Asset manifest and reviewed reference boxes |
+| assets/scenes/ | Three RGB and three thermal-style WebP frames |
+| scene.js, scene.css | Photo rendering, coordinate transforms, stress effects and independent overlays |
+| app.js | Runs, controls, history, curves, synthetic report and guided integration |
+| guided.js, guided.css | Timed presentation using real application runs |
+| evaluation.js | Dependency-free local parsing, IoU matching, comparison and exports |
+| evaluation-ui.js, evaluation.css | Local import workflow, image audit and imported reports |
+| docs/, examples/ | Schemas, provenance and example input |
+| tests/ | Engine, scan, scene, guided and evaluation regression tests |
 
-Keep asset links relative to the page so the same files work at the GitHub project URL and a future custom domain.
+## GitHub Pages and future domain
 
-## Connect a GRIM SIGNAL LABS domain later
-
-The initial deployment uses the GitHub Pages address. No custom domain is configured in the source, and no `CNAME` file is included.
-
-Once the intended domain or subdomain is selected and its DNS can be managed:
-
-1. Verify domain ownership in GitHub and set the custom domain in the repository's Pages settings.
-2. Configure DNS using GitHub's instructions for that domain type. A subdomain points to `karolhuzarski-maker.github.io`, without the `/judas-field/` path.
-3. Wait for DNS and certificate provisioning, then enable HTTPS and verify the app and downloads at the new address.
-
-For branch publishing, GitHub's custom-domain setting manages a `CNAME` file. Follow [Managing a custom domain](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site) when making that change. The application does not need to be rebuilt for the domain switch.
+The existing repository publishes from **main / root**, without a build command or `CNAME`. All asset paths remain relative so the same application can move to a Grim Signal Labs domain later. Set the confirmed domain in GitHub Pages, configure its DNS, and verify HTTPS when domain ownership/access is available. No domain or DNS changes are part of this release.

@@ -17,7 +17,7 @@
         person('P04', 72, 72, 'lying', 'still', 0.84, 0.21, 0.49),
         person('P05', 25, 76, 'standing', 'still', 0.96, 0.06, 0.80)
       ]) }),
-    TCCC: Object.freeze({ name: 'TCCC', title: 'Tactical casualty assessment',
+    TCCC: Object.freeze({ name: 'TCCC', title: 'Tactical casualty observation',
       description: 'Tactical observation / simulated subjects. Observable person cues only; no medical assessment.',
       persons: Object.freeze([
         person('T01', 28, 30, 'standing', 'moving', 0.95, 0.08, 0.77),

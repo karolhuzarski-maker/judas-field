@@ -1,0 +1,8 @@
+/* One uncropped coordinate frame on desktop and mobile. */
+.field{aspect-ratio:16/9;background:#101619;isolation:isolate}
+.field .scene-svg{display:block;flex:0 0 100%;width:100%;height:100%;overflow:hidden}
+.scene-unavailable{padding:28px;max-width:550px;text-align:center;color:#b2bdc4;font-size:12px;line-height:1.7}
+.scene-unavailable strong{display:block;color:#e3c18d;font-size:15px;margin-bottom:8px}
+.scene-legend{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font:9px var(--mono);color:#9cabb5}
+.scene-legend .gt{color:#77d7e1}.scene-legend .prediction{color:#a3e2ad}.scene-legend .miss{color:#ff9a9e}.scene-legend .fp{color:#f0c37c}
+@media(max-width:600px){.field{aspect-ratio:16/9}.scene-unavailable{padding:18px;font-size:11px}.scene-unavailable strong{font-size:13px}.scene-legend{font-size:8px;gap:8px}}

@@ -10,19 +10,19 @@ const source=name=>fs.readFileSync(path.join(__dirname,'..',name),'utf8');
 // Exercise the real event handlers with a controlled animation clock.
 // Browser layout and native input behavior are checked separately in the browser.
 function app(){
-  const elements=new Map(),frames=new Map();let nextFrame=0,lastScene;
+  const elements=new Map(),frames=new Map(),downloads=[];let nextFrame=0,lastScene;
   function element(id,dataset={}){return {id,dataset,value:'',checked:false,disabled:false,innerHTML:'',textContent:'',style:{},listeners:{},classList:{toggle(){}},setAttribute(){},scrollIntoView(){},addEventListener(type,handler){this.listeners[type]=handler;},dispatch(type){this.listeners[type]?.({target:this});}};}
   for(const [,id] of source('index.html').matchAll(/\bid="([^"]+)"/g))elements.set(id,element(id));
   for(const key of ['altitude','speed','occlusion','smoke','fog','observation']){elements.set(key,element(key));elements.set(key+'-value',element(key+'-value'));}
   const domains=Object.keys(engine.domains).map(domain=>element('',{domain}));
   const sensors=['RGB','THERMAL'].map(sensor=>element('',{sensor}));
-  const context=vm.createContext({document:{getElementById:id=>{assert.ok(elements.has(id),'Known element '+id);return elements.get(id);},querySelectorAll:selector=>selector==='[data-domain]'?domains:selector==='[data-sensor]'?sensors:[]},window:{matchMedia:()=>({matches:false}),scrollTo(){}},requestAnimationFrame:fn=>{const id=++nextFrame;frames.set(id,fn);return id;},cancelAnimationFrame:id=>frames.delete(id)});
+  const context=vm.createContext({document:{getElementById:id=>{assert.ok(elements.has(id),'Known element '+id);return elements.get(id);},querySelectorAll:selector=>selector==='[data-domain]'?domains:selector==='[data-sensor]'?sensors:[],body:{append(){}},createElement:()=>({click(){downloads.at(-1).filename=this.download;},remove(){}})},window:{matchMedia:()=>({matches:false}),scrollTo(){}},Blob,URL:{createObjectURL:blob=>{downloads.push({blob});return 'blob:test';},revokeObjectURL(){}},setTimeout:fn=>fn(),requestAnimationFrame:fn=>{const id=++nextFrame;frames.set(id,fn);return id;},cancelAnimationFrame:id=>frames.delete(id)});
   vm.runInContext(source('engine.js'),context);
-  vm.runInContext(source('scene.js'),context);
+  vm.runInContext(source('scenarios.js'),context);vm.runInContext(source('scene.js'),context);
   const render=context.JudasScene.render;
   context.JudasScene.render=(config,result,options)=>{lastScene={config:{...config},result,options:{...options}};return render(config,result,options);};
   vm.runInContext(source('app.js'),context);
-  return {get scene(){return lastScene;},get:id=>elements.get(id),click:id=>elements.get(id).dispatch('click'),domain:value=>domains.find(b=>b.dataset.domain===value).dispatch('click'),sensor:value=>sensors.find(b=>b.dataset.sensor===value).dispatch('click'),set(key,value){elements.get(key).value=value;elements.get(key).dispatch(['altitude','speed','occlusion','smoke','fog','observation'].includes(key)?'input':'change');},frame(now){const pending=[...frames.values()];frames.clear();pending.forEach(fn=>fn(now));}};
+  return {downloads,get scene(){return lastScene;},get:id=>elements.get(id),click:id=>elements.get(id).dispatch('click'),domain:value=>domains.find(b=>b.dataset.domain===value).dispatch('click'),sensor:value=>sensors.find(b=>b.dataset.sensor===value).dispatch('click'),set(key,value){elements.get(key).value=value;elements.get(key).dispatch(['altitude','speed','occlusion','smoke','fog','observation'].includes(key)?'input':'change');},frame(now){const pending=[...frames.values()];frames.clear();pending.forEach(fn=>fn(now));}};
 }
 
 const geometry=svg=>[...svg.matchAll(/<g data-person-id="[^"]+" transform="[^"]+"/g)].map(m=>m[0]);
@@ -95,7 +95,7 @@ test('reset cancels an unfinished run without adding a completed result',()=>{
 });
 
 test('scan reveals only detections reached in simulated time, including while paused',()=>{
-  const context=vm.createContext({});vm.runInContext(source('engine.js'),context);vm.runInContext(source('scene.js'),context);
+  const context=vm.createContext({});vm.runInContext(source('engine.js'),context);vm.runInContext(source('scenarios.js'),context);vm.runInContext(source('scene.js'),context);
   const config={...engine.defaults,speed:3,observation:10},result=context.JudasEngine.simulate(config);
   // A late false alarm must not appear merely because playback is paused.
   result.falsePositives=[{id:'FP-LATE',x:20,y:25,confidence:0.6}];
@@ -137,3 +137,27 @@ test('automatic speed ladder uses the speed of every step and accelerated suite 
   });
   assert.equal(ui.scene.options.playback,false);assert.equal(ui.get('progress').style.width,'100%');
 });
+
+test('synthetic CSV download preserves scores and the JSON report imagery provenance',async()=>{
+  const ui=app();ui.domain('SAR');ui.sensor('THERMAL');ui.set('speed',12);ui.set('occlusion',35);
+  ui.click('run');ui.frame(100);ui.frame(1601);
+  ui.click('download-json');ui.click('download-csv');
+  assert.equal(ui.downloads.length,2);
+  const report=JSON.parse(await ui.downloads[0].blob.text()),csv=await ui.downloads[1].blob.text();
+  const lines=csv.split('\r\n'),fields=lines[0].split(',');
+  const values=[...lines[1].matchAll(/"((?:[^"]|"")*)"(?:,|$)/g)].map(match=>match[1].replace(/""/g,'"'));
+  assert.equal(lines.length,2);assert.equal(values.length,fields.length,'quoted JSON cells retain their embedded commas and quotes');
+  const row=Object.fromEntries(fields.map((field,index)=>[field,values[index]])),run=report.runs[0];
+  assert.equal(row.source,'SYNTHETIC MODEL DEMO');assert.equal(row.source,report.source);
+  assert.equal(row.applicationVersion,'0.2.0');assert.equal(row.applicationVersion,report.applicationVersion);
+  assert.equal(row.scenarioId,'sar-v02');assert.equal(row.scenarioId,run.scenarioId);
+  assert.equal(row.coordinateSystem,'normalized_xywh');assert.equal(row.coordinateSystem,run.coordinateSystem);
+  assert.deepEqual(JSON.parse(row.reference),run.reference);assert.match(row.reference,/sar-thermal\.webp/);
+  assert.equal(row.confidenceMeaning,run.confidenceMeaning);assert.match(row.confidenceMeaning,/Uncalibrated/);
+  assert.equal(row.provenance,report.provenance);assert.match(row.provenance,/not radiometric/);
+  for(const key of ['tp','fp','fn','recall','precision','status','synthetic'])assert.equal(row[key],String(run[key]));
+  for(const key of Object.keys(engine.defaults))assert.equal(row[key],String(run.config[key]));
+  assert.deepEqual(JSON.parse(row.persons),run.persons);assert.deepEqual(JSON.parse(row.falsePositives),run.falsePositives);
+  assert.match(ui.downloads[1].filename,/judas-field-synthetic-.*\.csv$/);
+});
+

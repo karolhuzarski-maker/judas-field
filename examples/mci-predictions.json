@@ -1,0 +1,64 @@
+{
+  "schema_version": "judas-predictions-v1",
+  "scenario_id": "mci-v02",
+  "coordinate_system": "normalized_xywh",
+  "sensor": "RGB",
+  "model_name": "Format example — exact reference boxes, not model inference",
+  "predictions": [
+    {
+      "id": "example-1",
+      "bbox": [
+        0.21889952153110048,
+        0.4303931987247609,
+        0.03229665071770335,
+        0.12327311370882041
+      ],
+      "confidence": 0.9,
+      "class": "person"
+    },
+    {
+      "id": "example-2",
+      "bbox": [
+        0.3570574162679426,
+        0.5951115834218916,
+        0.09988038277511961,
+        0.09670563230605739
+      ],
+      "confidence": 0.9,
+      "class": "person"
+    },
+    {
+      "id": "example-3",
+      "bbox": [
+        0.32894736842105265,
+        0.434643995749203,
+        0.05502392344497608,
+        0.09776833156216791
+      ],
+      "confidence": 0.9,
+      "class": "person"
+    },
+    {
+      "id": "example-4",
+      "bbox": [
+        0.6800239234449761,
+        0.7120085015940489,
+        0.09688995215311005,
+        0.09670563230605739
+      ],
+      "confidence": 0.9,
+      "class": "person"
+    },
+    {
+      "id": "example-5",
+      "bbox": [
+        0.6477272727272727,
+        0.3475026567481403,
+        0.03110047846889952,
+        0.12008501594048884
+      ],
+      "confidence": 0.9,
+      "class": "person"
+    }
+  ]
+}
