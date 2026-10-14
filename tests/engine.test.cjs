@@ -32,7 +32,7 @@ test('identical settings and seeds produce byte-identical results without mutati
   assert.notEqual(engine.simulate(input).persons[0].x, 999);
 });
 
-test('each stress sweep raises difficulty and never raises recall with a fixed seed', () => {
+test('single stress sweeps at baseline hover raise difficulty without raising recall', () => {
   for (const domain of ['MCI', 'TCCC', 'SAR']) {
     for (const model of ['A', 'B']) {
       for (const preset of ['altitude', 'speed', 'occlusion', 'smoke', 'fog', 'light', 'observation', 'auto']) {
@@ -66,7 +66,7 @@ test('auto suite has six levels, reaches a tested boundary, and preserves compar
 
 test('severe conditions produce misses, zero precision, null acquisition times and no NaN', () => {
   const result = engine.simulate({ altitude: 120, speed: 12, smoke: 100, fog: 100, occlusion: 100,
-    observation: 2, light: 'night', minRecall: 0, maxFP: 10 });
+    observationCap: 2, light: 'night', minRecall: 0, maxFP: 10 });
   assert.equal(result.tp, 0);
   assert.equal(result.precision, 0);
   assert.equal(result.recall, 0);
@@ -76,7 +76,7 @@ test('severe conditions produce misses, zero precision, null acquisition times a
   assert.ok(result.persons.every(person => person.time === null));
   assert.ok(!JSON.stringify(result).includes('NaN'));
   // No true or false detections is also defined, with no division by zero.
-  const empty = engine.simulate({ observation: 2, altitude: 120 });
+  const empty = engine.simulate({ observationCap: 1, altitude: 120 });
   assert.equal(empty.tp, 0);
   assert.equal(empty.fp, 0);
   assert.equal(empty.precision, 0);
@@ -133,7 +133,8 @@ test('export is complete, reproducible JSON with synthetic tag and count summari
   const report = engine.exportReport(history);
   assert.deepEqual(JSON.parse(JSON.stringify(report)), report);
   assert.equal(report.synthetic, true);
-  assert.equal(report.schemaVersion, '1.0.0');
+  assert.equal(report.schemaVersion, '2.0.0');
+  assert.equal(report.version, '0.3.0');
   assert.equal(report.runs.length, 6);
   assert.deepEqual(report.runs, history);
   assert.equal(report.counts.totalPersonObservations, 30);
@@ -157,8 +158,8 @@ test('invalid input is bounded and preset overrides remain independent', () => {
   assert.equal(result.config.domain, 'MCI');
   assert.equal(result.config.model, 'A');
   assert.equal(result.config.speed, 0);
-  assert.equal(result.config.altitude, 10);
-  assert.equal(result.config.observation, 10);
+  assert.equal(result.config.altitude, 15);
+  assert.equal(result.config.observation, 30);
   assert.equal(result.config.minRecall, 1);
   assert.equal(result.config.maxFP, 0);
   assert.equal(result.config.sensor, 'THERMAL');

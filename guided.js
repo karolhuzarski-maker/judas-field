@@ -8,7 +8,7 @@
 
   function makePlan(engine) {
     const baseline = engine.normalize({ ...engine.defaults, domain: 'SAR', model: 'A', sensor: 'RGB',
-      altitude: 30, speed: 4, observation: 15, occlusion: 0, smoke: 0, fog: 0,
+      altitude: 30, speed: 4, fov: 60, observationCap: 30, occlusion: 0, smoke: 0, fog: 0,
       light: 'day', seed: 42, minRecall: 0.8, maxFP: 1 });
     const sweep = engine.suite(baseline, 'occlusion');
     return { baseline, sweep, comparison: sweep.flatMap(config => [{ ...config, model: 'A' }, { ...config, model: 'B' }]) };
@@ -103,6 +103,8 @@
       cancel(true);
       const token = ++generation;
       const plan = makePlan(engine);
+      const geometry = engine.geometry(plan.baseline);
+      const observation = `${geometry.effectiveObservationTime.toFixed(2)} s`;
       snapshot = { ...snapshot, active: true, complete: false, visible: true, elapsed: 0, progress: 0 };
       api.stopRun();
       api.setGuidedBusy(true);
@@ -116,17 +118,17 @@
       try {
         await hold(token);
         if (!valid(token)) return;
-        stage(1, 'Start with an acceptable baseline.', 'Acceptance: at least 80% recall and no more than one false alarm. The scan uses the real demo engine.');
+        stage(1, 'Start with a physically defined baseline.', `At 30 m and 4 m/s, the assumed 60° camera provides ${observation} of target visibility. The 30 s observation cap does not extend it. Acceptance: at least 80% recall and no more than one false alarm.`);
         ui.focus?.('field');
         const baseline = await run(token, [plan.baseline], 'Guided · SAR baseline', 'guided');
         if (!valid(token)) return;
         const base = baseline[0];
         snapshot.message = `Baseline: ${base.tp}/${base.persons.length} reference subjects found, ${percent(base.recall)} recall, ${base.fp} false alarms — ${base.status}.`;
-        snapshot.detail = 'The detector passes these configured conditions. That alone says nothing about the conditions it has not yet faced.';
+        snapshot.detail = `Effective observation: ${observation}. ${base.status === 'PASS' ? 'The detector passes these configured conditions.' : 'The detector does not meet acceptance under these configured conditions.'} This synthetic result says nothing about conditions not yet tested.`;
         render();
         await hold(token);
         if (!valid(token)) return;
-        stage(2, 'Now hide more of each subject.', 'Six occlusion levels, 0–100%. Altitude, speed, light, observation window and seed stay fixed. Watch the misses and the recall curve.');
+        stage(2, 'Now hide more of each subject.', `Six occlusion levels, 0–100%. Altitude, speed, camera FOV, observation cap, light and seed stay fixed. Geometry therefore keeps effective observation at ${observation}; only occlusion changes.`);
         const sweep = await run(token, plan.sweep, 'Guided · occlusion sweep', 'guided');
         if (!valid(token)) return;
         const last = sweep.at(-1);
@@ -150,7 +152,7 @@
         if (!valid(token)) return;
         api.showView('report');
         stage(5, 'Your AI Stress Report turns a demo into a next experiment.',
-          'Review the tested boundary, missed subjects and matched model comparison. Next: test finer levels around failure and repeat on held-out, annotated real field data. JSON, CSV and print exports preserve the evidence.');
+          'Review the tested boundary, missed subjects, observation geometry and matched model comparison. Higher altitude can increase dwell time while reducing target size; more time does not guarantee detection. Next: repeat on held-out, annotated field data. Exports preserve the evidence.');
         ui.reveal?.();
         await hold(token);
         if (!valid(token)) return;

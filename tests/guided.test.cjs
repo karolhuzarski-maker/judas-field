@@ -52,6 +52,9 @@ test('guided plan changes only occlusion and pairs both models on identical sett
   const plan = guided.makePlan(engine);
   assert.equal(plan.baseline.domain, 'SAR');
   assert.equal(engine.simulate(plan.baseline).status, 'PASS');
+  assert.equal(plan.baseline.observationCap, 30);
+  assert.equal(plan.baseline.fov, 60);
+  assert.ok(Math.abs(plan.baseline.observation - 8.660254) < 0.001);
   assert.equal(plan.sweep.length, 6);
   for (const config of plan.sweep) assert.deepEqual({ ...config, occlusion: 0 }, plan.baseline);
   for (let index = 0; index < plan.comparison.length; index += 2) {
@@ -76,8 +79,19 @@ test('full demo finishes in the promised window, using actual results and openin
   assert.deepEqual(h.views, ['bench', 'report']);
   assert.equal(h.busy, false);
   assert.equal(h.pendingTimers, 0);
-  assert.ok(h.snapshots.some(s => s.detail.includes('25% target occlusion, 2/3 found')));
-  assert.ok(h.snapshots.some(s => s.detail.includes('Model B: first failed acceptance at 50% occlusion')));
+  const sweep = h.history.slice(1, 7), comparison = h.history.slice(7);
+  const firstFailed = sweep.findIndex(result => result.status !== 'PASS');
+  assert.ok(firstFailed > 0, 'guide must demonstrate a passing level followed by a measured failure');
+  assert.equal(sweep[firstFailed - 1].status, 'PASS');
+  const failure = sweep[firstFailed];
+  assert.ok(h.snapshots.some(s => s.detail.includes(`${failure.config.occlusion}% target occlusion, ${failure.tp}/${failure.persons.length} found`)));
+  for (const model of ['A', 'B']) {
+    const failed = comparison.find(result => result.config.model === model && result.status !== 'PASS');
+    assert.ok(failed, `profile ${model} must reach a failed acceptance level`);
+    assert.ok(h.snapshots.some(s => s.detail.includes(`Model ${model}: first failed acceptance at ${failed.config.occlusion}% occlusion`)));
+  }
+  assert.ok(h.snapshots.some(s => s.detail.includes('8.66 s of target visibility')));
+  assert.ok(h.snapshots.some(s => s.detail.includes('The 30 s observation cap does not extend it')));
   assert.ok(h.history.every(result => JSON.stringify(result) === JSON.stringify(engine.simulate(result.config))));
 });
 

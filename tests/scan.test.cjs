@@ -14,6 +14,7 @@ function app(){
   function element(id,dataset={}){return {id,dataset,value:'',checked:false,disabled:false,innerHTML:'',textContent:'',style:{},listeners:{},classList:{toggle(){}},setAttribute(){},scrollIntoView(){},addEventListener(type,handler){this.listeners[type]=handler;},dispatch(type){this.listeners[type]?.({target:this});}};}
   for(const [,id] of source('index.html').matchAll(/\bid="([^"]+)"/g))elements.set(id,element(id));
   for(const key of ['altitude','speed','occlusion','smoke','fog','observation']){elements.set(key,element(key));elements.set(key+'-value',element(key+'-value'));}
+  elements.set('visibility-max',element('visibility-max'));
   const domains=Object.keys(engine.domains).map(domain=>element('',{domain}));
   const sensors=['RGB','THERMAL'].map(sensor=>element('',{sensor}));
   const context=vm.createContext({document:{getElementById:id=>{assert.ok(elements.has(id),'Known element '+id);return elements.get(id);},querySelectorAll:selector=>selector==='[data-domain]'?domains:selector==='[data-sensor]'?sensors:[],body:{append(){}},createElement:()=>({click(){downloads.at(-1).filename=this.download;},remove(){}})},window:{matchMedia:()=>({matches:false}),scrollTo(){}},Blob,URL:{createObjectURL:blob=>{downloads.push({blob});return 'blob:test';},revokeObjectURL(){}},setTimeout:fn=>fn(),requestAnimationFrame:fn=>{const id=++nextFrame;frames.set(id,fn);return id;},cancelAnimationFrame:id=>frames.delete(id)});
@@ -32,7 +33,7 @@ const detections=svg=>[...svg.matchAll(/data-annotation="([^"]+)" data-detected=
 test('both manual Run controls preserve the configured scene through scan, pause, and completion',()=>{
   for(const domain of Object.keys(engine.domains))for(const button of ['run-top','run']){
     const ui=app();ui.domain(domain);ui.sensor('THERMAL');
-    for(const [key,value] of Object.entries({altitude:116,speed:6,occlusion:45,smoke:37,fog:28,observation:20,light:'night',seed:1976,model:'B',minRecall:0.6,maxFP:2}))ui.set(key,value);
+    for(const [key,value] of Object.entries({altitude:116,speed:6,occlusion:45,smoke:37,fog:28,observationCap:20,light:'night',seed:1976,model:'B',minRecall:0.6,maxFP:2}))ui.set(key,value);
     const before={...ui.scene.config},people=geometry(ui.get('field').innerHTML);
     ui.click(button);
     assert.deepEqual(ui.scene.config,before);assert.deepEqual(geometry(ui.get('field').innerHTML),people);
@@ -54,7 +55,7 @@ test('both manual Run controls preserve the configured scene through scan, pause
 
 test('fly-by speed makes manual scans visibly faster while hover still completes',()=>{
   for(const [speed,duration,progressAtOneSecond] of [[0,6000,1/6],[4,3000,1/3],[12,1500,2/3]]){
-    const ui=app();ui.set('speed',speed);ui.set('observation',20);
+    const ui=app();ui.set('speed',speed);ui.set('observationCap',20);
     const config={...ui.scene.config};ui.click('run-top');ui.frame(100);ui.frame(1100);
     assert.ok(Math.abs(ui.scene.options.progress-progressAtOneSecond)<1e-10,`Speed ${speed}: scan progress after one second`);
     assert.ok(Math.abs(parseFloat(ui.get('progress').style.width)/100-progressAtOneSecond)<1e-10,'Progress bar follows the scan');
@@ -96,7 +97,7 @@ test('reset cancels an unfinished run without adding a completed result',()=>{
 
 test('scan reveals only detections reached in simulated time, including while paused',()=>{
   const context=vm.createContext({});vm.runInContext(source('engine.js'),context);vm.runInContext(source('scenarios.js'),context);vm.runInContext(source('scene.js'),context);
-  const config={...engine.defaults,speed:3,observation:10},result=context.JudasEngine.simulate(config);
+  const config=engine.normalize({...engine.defaults,speed:3}),result=context.JudasEngine.simulate(config);
   // A late false alarm must not appear merely because playback is paused.
   result.falsePositives=[{id:'FP-LATE',x:20,y:25,confidence:0.6}];
   for(const progress of [0,0.15,0.4,0.8,1]){
@@ -149,7 +150,7 @@ test('synthetic CSV download preserves scores and the JSON report imagery proven
   assert.equal(lines.length,2);assert.equal(values.length,fields.length,'quoted JSON cells retain their embedded commas and quotes');
   const row=Object.fromEntries(fields.map((field,index)=>[field,values[index]])),run=report.runs[0];
   assert.equal(row.source,'SYNTHETIC MODEL DEMO');assert.equal(row.source,report.source);
-  assert.equal(row.applicationVersion,'0.2.0');assert.equal(row.applicationVersion,report.applicationVersion);
+  assert.equal(row.applicationVersion,'0.3.0');assert.equal(row.applicationVersion,report.applicationVersion);
   assert.equal(row.scenarioId,'sar-v02');assert.equal(row.scenarioId,run.scenarioId);
   assert.equal(row.coordinateSystem,'normalized_xywh');assert.equal(row.coordinateSystem,run.coordinateSystem);
   assert.deepEqual(JSON.parse(row.reference),run.reference);assert.match(row.reference,/sar-thermal\.webp/);
@@ -159,5 +160,58 @@ test('synthetic CSV download preserves scores and the JSON report imagery proven
   for(const key of Object.keys(engine.defaults))assert.equal(row[key],String(run.config[key]));
   assert.deepEqual(JSON.parse(row.persons),run.persons);assert.deepEqual(JSON.parse(row.falsePositives),run.falsePositives);
   assert.match(ui.downloads[1].filename,/judas-field-synthetic-.*\.csv$/);
+  assert.deepEqual(JSON.parse(row.geometry),run.geometry);
+  for(const key of ['footprint','visibilityTime','hover','effectiveObservationTime','travelDistance'])assert.equal(row[key],String(run.geometry[key]));
+  assert.match(row.geometryNote,/central straight-line flyover/);
+});
+
+test('live controls synchronize speed, inverse visibility, altitude and separate cap',()=>{
+  const ui=app();ui.set('speed',12);
+  assert.ok(Math.abs(ui.get('observation').value-2.886751345948129)<1e-10);
+  assert.ok(Math.abs(ui.scene.config.observation-2.886751345948129)<1e-10);
+  ui.set('speed',5);assert.ok(Math.abs(ui.get('observation').value-6.928203230275509)<1e-10);
+  ui.set('observation',10);
+  assert.ok(Math.abs(ui.scene.config.speed-3.4641016151377544)<1e-10);
+  assert.ok(Math.abs(ui.get('speed').value-ui.scene.config.speed)<1e-10);
+  ui.set('altitude',60);
+  assert.ok(Math.abs(ui.scene.config.speed-3.4641016151377544)<1e-10);
+  assert.ok(Math.abs(ui.get('observation').value-20)<1e-10);
+  ui.set('observationCap',5);
+  assert.ok(Math.abs(ui.get('observation').value-20)<1e-10);
+  assert.equal(ui.scene.config.observation,5);
+  assert.match(ui.get('visibility-note').textContent,/Effective: 5 s/);
+});
+
+test('hover, long dwell and infeasible inverse request show truthful controls',()=>{
+  const ui=app();
+  assert.equal(ui.scene.config.speed,0);
+  assert.equal(ui.get('observation-value').innerHTML,'Continuous / Hover');
+  assert.equal(ui.scene.config.observation,30);
+  ui.set('observationCap',12);assert.equal(ui.scene.config.observation,12);
+  ui.set('speed',0.1);
+  assert.ok(ui.get('observation').value>300);assert.ok(ui.get('observation').max>300);
+  assert.equal(ui.scene.config.observation,12);
+  ui.set('altitude',120);ui.set('observation',1);
+  assert.equal(ui.scene.config.speed,12);
+  assert.ok(Math.abs(ui.get('observation').value-11.547005383792516)<1e-10);
+  assert.match(ui.get('visibility-note').textContent,/12 m\/s/);
+  ui.set('speed',0);assert.equal(ui.get('observation-value').innerHTML,'Continuous / Hover');
+  ui.click('baseline');assert.equal(ui.scene.config.speed,0);assert.equal(ui.scene.config.observationCap,12);assert.equal(ui.scene.config.observation,12);
+});
+
+test('matched inverse-visibility suite preserves geometry in JSON, CSV and report',async()=>{
+  const ui=app();ui.set('altitude',30);ui.set('observationCap',15);
+  ui.get('preset').value='visibility';ui.get('preset').selectedOptions=[{text:'Target visibility / inverse speed'}];
+  ui.click('compare');ui.frame(100);
+  for(let i=0;i<12;i++)ui.frame(100+(i+1)*2401);
+  assert.equal(ui.get('history-count').textContent,'12');
+  ui.click('download-json');ui.click('download-csv');
+  const report=JSON.parse(await ui.downloads[0].blob.text());
+  assert.equal(report.runs.length,12);
+  for(let i=0;i<12;i+=2){
+    assert.deepEqual(report.runs[i].geometry,report.runs[i+1].geometry);
+    assert.equal(report.runs[i].config.observation,Math.min(report.runs[i].geometry.visibilityTime,15));
+  }
+  const csv=await ui.downloads[1].blob.text();assert.match(csv,/effectiveObservationTime/);assert.match(csv,/central straight-line flyover/);
 });
 
