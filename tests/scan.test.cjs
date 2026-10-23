@@ -150,7 +150,7 @@ test('synthetic CSV download preserves scores and the JSON report imagery proven
   assert.equal(lines.length,2);assert.equal(values.length,fields.length,'quoted JSON cells retain their embedded commas and quotes');
   const row=Object.fromEntries(fields.map((field,index)=>[field,values[index]])),run=report.runs[0];
   assert.equal(row.source,'SYNTHETIC MODEL DEMO');assert.equal(row.source,report.source);
-  assert.equal(row.applicationVersion,'0.3.1');assert.equal(row.applicationVersion,report.applicationVersion);
+  assert.equal(row.applicationVersion,'0.3.2');assert.equal(row.applicationVersion,report.applicationVersion);
   assert.equal(row.scenarioId,'sar-v02');assert.equal(row.scenarioId,run.scenarioId);
   assert.equal(row.coordinateSystem,'normalized_xywh');assert.equal(row.coordinateSystem,run.coordinateSystem);
   assert.deepEqual(JSON.parse(row.reference),run.reference);assert.match(row.reference,/sar-thermal\.webp/);
