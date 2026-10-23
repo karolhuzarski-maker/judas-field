@@ -150,7 +150,7 @@ test('synthetic CSV download preserves scores and the JSON report imagery proven
   assert.equal(lines.length,2);assert.equal(values.length,fields.length,'quoted JSON cells retain their embedded commas and quotes');
   const row=Object.fromEntries(fields.map((field,index)=>[field,values[index]])),run=report.runs[0];
   assert.equal(row.source,'SYNTHETIC MODEL DEMO');assert.equal(row.source,report.source);
-  assert.equal(row.applicationVersion,'0.3.0');assert.equal(row.applicationVersion,report.applicationVersion);
+  assert.equal(row.applicationVersion,'0.3.1');assert.equal(row.applicationVersion,report.applicationVersion);
   assert.equal(row.scenarioId,'sar-v02');assert.equal(row.scenarioId,run.scenarioId);
   assert.equal(row.coordinateSystem,'normalized_xywh');assert.equal(row.coordinateSystem,run.coordinateSystem);
   assert.deepEqual(JSON.parse(row.reference),run.reference);assert.match(row.reference,/sar-thermal\.webp/);
@@ -197,6 +197,28 @@ test('hover, long dwell and infeasible inverse request show truthful controls',(
   assert.match(ui.get('visibility-note').textContent,/12 m\/s/);
   ui.set('speed',0);assert.equal(ui.get('observation-value').innerHTML,'Continuous / Hover');
   ui.click('baseline');assert.equal(ui.scene.config.speed,0);assert.equal(ui.scene.config.observationCap,12);assert.equal(ui.scene.config.observation,12);
+});
+
+test('inverse visibility keeps a stable track while speed and altitude can rescale it',()=>{
+  const ui=app();ui.set('speed',0.1);
+  const range=ui.get('observation'),maximum=Number(range.max);
+  assert.equal(maximum,347);
+  // Observe writes to the input: a valid native value should survive its input event.
+  let currentValue=range.value,writes=0;
+  Object.defineProperty(range,'value',{get:()=>currentValue,set:value=>{currentValue=value;writes++;}});
+  for(const fraction of [0.8,0.5,0.2,0.9]){
+    const requested=1+(maximum-1)*fraction;
+    writes=0;ui.set('observation',requested);
+    assert.equal(Number(range.max),maximum,'The inverse control does not shrink its own scale');
+    assert.equal(writes,1,'Only the simulated user writes the already valid range value');
+    assert.ok(Math.abs((Number(range.value)-1)/(Number(range.max)-1)-fraction)<1e-12,'Thumb stays at the selected track position');
+    assert.ok(Math.abs(engine.geometry(ui.scene.config).visibilityTime-requested)<1e-10,'Canonical speed still realizes the requested visibility');
+    assert.ok(Math.abs(Number(ui.get('speed').value)-ui.scene.config.speed)<1e-10,'Linked speed remains synchronized');
+  }
+  ui.set('speed',0.2);assert.equal(Number(range.max),174);
+  ui.set('altitude',60);assert.equal(Number(range.max),347);
+  ui.set('speed',4);assert.equal(Number(range.max),120);
+  ui.set('speed',0);assert.equal(Number(range.max),120);assert.equal(ui.get('observation-value').innerHTML,'Continuous / Hover');
 });
 
 test('matched inverse-visibility suite preserves geometry in JSON, CSV and report',async()=>{

@@ -1,9 +1,9 @@
-# JUDAS FIELD v0.3.0
+# JUDAS FIELD v0.3.1
 
 **FIND YOUR AI'S BREAKING POINT.**  
 Independent stress testing for Physical AI in unfamiliar real-world conditions. By **GRIM SIGNAL LABS**.
 
-[Live demo](https://karolhuzarski-maker.github.io/judas-field/?v=0.3.0) · [Repository](https://github.com/karolhuzarski-maker/judas-field)
+[Live demo](https://karolhuzarski-maker.github.io/judas-field/?v=0.3.1) · [Repository](https://github.com/karolhuzarski-maker/judas-field)
 
 We help AI developers discover where their models fail before those failures happen in operational environments. Initial specialization: MCI, TCCC and SAR.
 
@@ -14,6 +14,12 @@ We help AI developers discover where their models fail before those failures hap
 **IMPORTED MODEL PREDICTIONS** evaluates an external detector's existing JSON or CSV predictions against the fixed annotated reference image. Files are read locally and never uploaded. Download a reference image, run your detector elsewhere, then import its predictions. This workflow computes actual one-to-one IoU matches on those supplied boxes; it does not run the model. Both imported sets must use the same scenario, sensor and thresholds.
 
 Scores on these small synthetic examples are not evidence of real-world performance, certification or independent blind validation. No diagnosis, breathing assessment, triage or treatment recommendations are made.
+
+## Mobile controls
+
+On phones, **STRESS CONTROLS** opens by default directly below the field preview, before the geometry panel and results. Sliders have larger handles and 44 px input areas. The panel can still be collapsed manually. Controls are temporarily locked during a scan or the guided demo; finish the scan or choose **End demo** before editing.
+
+Version 0.3.1 also keeps the visibility slider's scale fixed while adjusting long observation times, so its handle stays at the selected position. Changing altitude or speed recalculates the time scale.
 
 ## UAV observation geometry
 
