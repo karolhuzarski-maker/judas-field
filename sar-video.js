@@ -34,8 +34,8 @@
     '<label>LWIR MP4 <input id="sar-thermal-upload" type="file" accept="video/mp4,.mp4" aria-label="Select LWIR MP4"></label>',
     '</div>',
     '<div id="sar-video-picture" class="sar-video-picture sar-view-rgb">',
-    '<div class="sar-video-lane sar-video-rgb"><video id="sar-rgb" muted playsinline preload="metadata" aria-label="RGB aerial recording"></video><span>RGB / SOURCE</span><div class="sar-video-haze"></div><div class="sar-video-fog"></div><div class="sar-video-obscuration"></div></div>',
-    '<div class="sar-video-lane sar-video-thermal"><video id="sar-thermal" muted playsinline preload="metadata" aria-label="Synthetic LWIR aerial recording"></video><span>LWIR / SYNTHETIC</span><div class="sar-video-haze"></div><div class="sar-video-fog"></div><div class="sar-video-obscuration"></div></div>',
+    '<div class="sar-video-lane sar-video-rgb"><video id="sar-rgb" muted playsinline preload="metadata" aria-label="RGB aerial recording"></video><span>RGB / SOURCE</span><div class="sar-video-haze"></div><div class="sar-video-fog"></div><div class="sar-video-obscuration"></div><svg id="sar-rgb-tracks" class="sar-video-tracks" viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg></div>',
+    '<div class="sar-video-lane sar-video-thermal"><video id="sar-thermal" muted playsinline preload="metadata" aria-label="Synthetic LWIR aerial recording"></video><span>LWIR / SYNTHETIC</span><div class="sar-video-haze"></div><div class="sar-video-fog"></div><div class="sar-video-obscuration"></div><svg id="sar-thermal-tracks" class="sar-video-tracks" viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg></div>',
     '<div id="sar-video-scan" class="sar-video-scan" aria-hidden="true" hidden></div>',
     '<div id="sar-video-results" class="sar-video-results" role="status" aria-live="polite" hidden></div>',
     '<div id="sar-video-empty" class="sar-video-empty" role="status">Choose your synchronized RGB and LWIR MP4 files to start the video preview.</div>',
@@ -45,7 +45,7 @@
     '<output id="sar-video-clock">00:00 / 00:10</output>',
     '<button id="sar-video-restart" type="button" disabled aria-label="Rewind video">↺</button></div>',
     '<p id="sar-video-message" class="sar-video-message" role="status">Files remain on your device. No files are transferred to the server.</p>',
-    '<p class="sar-video-disclosure">VIDEO PREVIEW ONLY · The RGB/LWIR recording keeps its original camera path. Altitude adds an illustrative digital crop, without creating new detail. Fly-by speed and inverse visibility change playback pace, not measured flight speed. Fog, smoke, lighting and occlusion are display effects. The green sweep shows illustrative scan progress. End-of-playback S01–S03 labels are synthetic results for the separate reference image; the clips are not frame-registered, so there are no target boxes or model detections on video. LWIR is synthetic, not measured radiometry.</p>'
+    '<p class="sar-video-disclosure">VIDEO PREVIEW ONLY · S01–S03 boxes are manually aligned to the two bundled clips; their DETECTED scores and MISSED decisions come from the synthetic reference model, not video inference or verified detections. Uploaded replacement videos have no aligned boxes. The recording keeps its original camera path. Altitude adds an illustrative digital crop, without creating new detail. Fly-by speed and inverse visibility change playback pace, not measured flight speed. Fog, smoke, lighting and occlusion are display effects. The green sweep shows illustrative scan progress. LWIR is synthetic, not measured radiometry.</p>'
   ].join('');
   field.after(stage);
 
@@ -65,6 +65,32 @@
   const scan = $('sar-video-scan');
   const endResults = $('sar-video-results');
   const badge = $('sar-video-badge');
+  const trackLayers = {rgb: $('sar-rgb-tracks'), thermal: $('sar-thermal-tracks')};
+  // Pixel coordinates were checked against both bundled 1280 × 720 clips.
+  // All three stationary subjects move upward with the recorded camera pan.
+  const tracks = [
+    {id: 'S01', x: 931, y: 354, width: 60, height: 79},
+    {id: 'S02', x: 153, y: 861, width: 61, height: 67},
+    {id: 'S03', x: 678, y: 968, width: 120, height: 55}
+  ];
+  const panPixelsPerSecond = 79;
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const trackElements = {rgb: new Map(), thermal: new Map()};
+  const scores = {rgb: new Map(), thermal: new Map()};
+
+  for (const [channel, layer] of Object.entries(trackLayers)) {
+    for (const track of tracks) {
+      const group = document.createElementNS(svgNS, 'g');
+      const outline = document.createElementNS(svgNS, 'path');
+      const labelBackground = document.createElementNS(svgNS, 'rect');
+      const label = document.createElementNS(svgNS, 'text');
+      group.classList.add('sar-video-track');
+      group.dataset.target = track.id;
+      group.append(outline, labelBackground, label);
+      layer.append(group);
+      trackElements[channel].set(track.id, {group, outline, labelBackground, label});
+    }
+  }
 
   const selectedDomain = () => document.querySelector('.domain.active')?.dataset.domain === 'SAR';
   const clamp = (n, low, high) => Math.min(high, Math.max(low, n));
@@ -117,13 +143,57 @@
       seed: value('seed'), minRecall: value('minRecall'), maxFP: value('maxFP')
     });
   }
+  function bundledClip(channel) {
+    if (urls[channel] || !present[channel]) return false;
+    const expected = new URL('./assets/videos/sar-' + (channel === 'rgb' ? 'rgb' : 'lwir') + '.mp4', document.baseURI);
+    return videos[channel].currentSrc === expected.href
+      && videos[channel].videoWidth === 1280 && videos[channel].videoHeight === 720;
+  }
+  function refreshScores() {
+    if (!globalThis.JudasEngine) return;
+    for (const [channel, sensor] of [['rgb', 'RGB'], ['thermal', 'THERMAL']]) {
+      scores[channel] = new Map(globalThis.JudasEngine.simulate(referenceConfig(sensor)).persons.map(person => [person.id, person]));
+    }
+    renderTracks();
+  }
+  function renderTracks() {
+    for (const [channel, layer] of Object.entries(trackLayers)) {
+      layer.hidden = source !== 'video' || !selectedDomain() || !bundledClip(channel);
+      if (layer.hidden) continue;
+      const t = videos[channel].currentTime || 0;
+      for (const track of tracks) {
+        const {group, outline, labelBackground, label} = trackElements[channel].get(track.id);
+        const top = track.y - panPixelsPerSecond * t;
+        const visibleTop = Math.max(0, top), visibleBottom = Math.min(720, top + track.height);
+        const person = scores[channel].get(track.id);
+        group.style.display = person && visibleBottom - visibleTop >= 20 ? '' : 'none';
+        if (group.style.display) continue;
+        const detected = person.detected;
+        const labelText = track.id + ' · ' + (detected ? Math.round(person.confidence * 100) + '%' : 'MISSED');
+        const labelWidth = detected ? 132 : 170;
+        const labelY = visibleTop >= 28 ? visibleTop - 26 : visibleBottom + 3;
+        const x = track.x, w = track.width;
+        group.classList.toggle('missed', !detected);
+        outline.setAttribute('d', detected
+          ? `M ${x + 15} ${visibleTop} H ${x} V ${visibleTop + 15} M ${x + w - 15} ${visibleTop} H ${x + w} V ${visibleTop + 15} M ${x} ${visibleBottom - 15} V ${visibleBottom} H ${x + 15} M ${x + w - 15} ${visibleBottom} H ${x + w} V ${visibleBottom - 15}`
+          : `M ${x} ${visibleTop} H ${x + w} V ${visibleBottom} H ${x} Z`);
+        labelBackground.setAttribute('x', x);
+        labelBackground.setAttribute('y', labelY);
+        labelBackground.setAttribute('width', labelWidth);
+        labelBackground.setAttribute('height', 26);
+        label.setAttribute('x', x + 5);
+        label.setAttribute('y', labelY + 20);
+        label.textContent = labelText;
+      }
+    }
+  }
   function showEndResults() {
     if (source !== 'video' || !selectedDomain() || stage.hidden || !isReady() || !$('pause').disabled || !globalThis.JudasEngine) {
       hideEndResults();
       return;
     }
     const channels = view === 'split' ? ['RGB', 'THERMAL'] : [view === 'thermal' ? 'THERMAL' : 'RGB'];
-    endResults.innerHTML = '<strong>REFERENCE IMAGE / SYNTHETIC MODEL ' + $('model').value + '</strong>'
+    endResults.innerHTML = '<strong>SYNTHETIC MODEL ' + $('model').value + ' / REFERENCE SCORES</strong>'
       + '<div class="sar-video-result-columns">' + channels.map(sensor => {
         const result = globalThis.JudasEngine.simulate(referenceConfig(sensor));
         return '<div class="sar-video-result-channel"><span>' + (sensor === 'THERMAL' ? 'LWIR' : 'RGB')
@@ -131,7 +201,7 @@
           + result.persons.map(person => '<span class="' + (person.detected ? 'detected' : 'missed') + '">'
             + person.id + ' · ' + (person.detected ? Math.round(person.confidence * 100) + '%' : 'MISSED') + '</span>').join('')
           + '</div></div>';
-      }).join('') + '</div><small>Reference still only · no video inference or registered video boxes</small>';
+      }).join('') + '</div><small>Manually aligned clip boxes · reference model scores · no video inference</small>';
     endResults.hidden = false;
   }
   function syncScan() {
@@ -161,6 +231,7 @@
       }
     });
     syncTransport();
+    renderTracks();
     syncScan();
     if (next >= duration() - .015 && !playing) showEndResults();
     else hideEndResults();
@@ -177,9 +248,10 @@
     if (present.rgb && present.thermal && Math.abs(slave.currentTime - m.currentTime) > .07) {
       try { slave.currentTime = m.currentTime; } catch { /* Not seekable yet. */ }
     }
-    if (m.ended || getTime() >= duration() - .015) { pause(); syncTransport(); if ($('pause').disabled) showEndResults(); return; }
+    if (m.ended || getTime() >= duration() - .015) { pause(); syncTransport(); renderTracks(); if ($('pause').disabled) showEndResults(); return; }
     syncTransport();
     syncScan();
+    renderTracks();
     raf = requestAnimationFrame(tick);
   }
   async function start() {
@@ -210,6 +282,7 @@
     const resultsVisible = !endResults.hidden;
     view = next;
     syncPicture();
+    renderTracks();
     syncTransport();
     syncScan();
     if (next !== 'split') {
@@ -231,6 +304,7 @@
     });
     if (!on) { pause(); hideEndResults(); }
     if (on) { syncPicture(); effects(); void loadHostedPair(); }
+    renderTracks();
     syncScan();
   }
   function effects() {
@@ -248,7 +322,8 @@
       video.style.transform = 'scale(' + scale.toFixed(3) + ')';
       video.playbackRate = pace;
     });
-    badge.textContent = '10 S SOURCE · PREVIEW ' + pace.toFixed(2) + '× · DIGITAL CROP ' + scale.toFixed(2) + '×';
+    Object.values(trackLayers).forEach(layer => { layer.style.transform = 'scale(' + scale.toFixed(3) + ')'; });
+    badge.textContent = '10 S SOURCE · SYNTHETIC BOXES · PREVIEW ' + pace.toFixed(2) + '× · DIGITAL CROP ' + scale.toFixed(2) + '×';
     videos.rgb.style.filter = 'brightness(' + brightness + ') contrast(' + (1 - fog * .32) + ') blur(' + (occlusion * 1.5 + fog * .7).toFixed(2) + 'px)';
     videos.thermal.style.filter = 'contrast(' + (1 - fog * .12) + ') blur(' + (occlusion * 1.2).toFixed(2) + 'px)';
     picture.querySelectorAll('.sar-video-lane').forEach(lane => {
@@ -301,11 +376,12 @@
         if (pairedCompatible()) report('Synchronized RGB / LWIR pair ready. ' + timeLabel(duration()) + ' · ' + video.videoWidth + ' × ' + video.videoHeight + ' · local playback.');
         else report('WARNING: Duration or image size differs. Select a matching RGB/LWIR pair.');
       }
-      syncPicture(); syncTransport(); effects();
+      syncPicture(); syncTransport(); effects(); refreshScores(); renderTracks();
     });
+    video.addEventListener('seeked', () => { syncTransport(); renderTracks(); });
     video.addEventListener('error', () => {
       present[channel] = false;
-      pause(); syncPicture();
+      pause(); syncPicture(); renderTracks();
       report('Could not decode ' + channel.toUpperCase() + '. Use H.264 MP4.');
     });
   });
@@ -328,6 +404,7 @@
       if (source === 'video' && selectedDomain() && view !== 'split') {
         view = document.querySelector('[data-sensor].selected')?.dataset.sensor === 'THERMAL' ? 'thermal' : 'rgb';
         syncPicture();
+        renderTracks();
       }
     });
   });
@@ -335,6 +412,7 @@
     if (event.target === position) return;
     effects();
     hideEndResults();
+    refreshScores();
   };
   document.addEventListener('input', controlsChanged);
   document.addEventListener('change', controlsChanged);
@@ -346,4 +424,5 @@
   refreshSource();
   syncPicture();
   effects();
+  refreshScores();
 })();

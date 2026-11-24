@@ -23,6 +23,14 @@
 .sar-video-thermal .sar-video-fog{background:linear-gradient(125deg,#8d919ac9,#666f73b8)}
 .sar-video-obscuration{opacity:0;background:radial-gradient(ellipse at 11% 18%,#06100deb 0 12%,transparent 33%),radial-gradient(ellipse at 80% 68%,#0a1816db 0 11%,transparent 31%)}
 .sar-video-thermal .sar-video-obscuration{background:radial-gradient(ellipse at 11% 18%,#14191ae5 0 12%,transparent 33%),radial-gradient(ellipse at 80% 68%,#151d1fe0 0 11%,transparent 31%)}
+.sar-video-tracks{position:absolute;inset:0;width:100%;height:100%;z-index:3;pointer-events:none;overflow:hidden}
+.sar-video-tracks[hidden]{display:none}
+.sar-video-track path{fill:none;stroke:#9ae4ac;stroke-width:2.5;filter:drop-shadow(0 1px 2px #000)}
+.sar-video-track rect{fill:#07110ef0}
+.sar-video-track text{fill:#a3eeb2;font:20px var(--mono);letter-spacing:.2px}
+.sar-video-track.missed path{stroke:#ff7c86;stroke-dasharray:6 5}
+.sar-video-track.missed rect{fill:#1b0d11f0}
+.sar-video-track.missed text{fill:#ff8a94}
 .sar-video-scan{position:absolute;inset:0;z-index:3;pointer-events:none}
 .sar-video-scan::before{content:"";position:absolute;left:0;right:0;top:var(--scan-y,0%);height:12%;transform:translateY(-100%);background:linear-gradient(transparent,#81e1b52b)}
 .sar-video-scan::after{content:"";position:absolute;left:0;right:0;top:var(--scan-y,0%);height:2px;background:#b5e9da;box-shadow:0 0 10px #95e5bf,0 0 18px #95e5bf}
