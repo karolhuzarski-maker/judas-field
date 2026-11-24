@@ -118,7 +118,10 @@
     });
   }
   function showEndResults() {
-    if (source !== 'video' || !selectedDomain() || stage.hidden || !isReady() || !globalThis.JudasEngine) return;
+    if (source !== 'video' || !selectedDomain() || stage.hidden || !isReady() || !$('pause').disabled || !globalThis.JudasEngine) {
+      hideEndResults();
+      return;
+    }
     const channels = view === 'split' ? ['RGB', 'THERMAL'] : [view === 'thermal' ? 'THERMAL' : 'RGB'];
     endResults.innerHTML = '<strong>REFERENCE IMAGE / SYNTHETIC MODEL ' + $('model').value + '</strong>'
       + '<div class="sar-video-result-columns">' + channels.map(sensor => {
