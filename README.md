@@ -45,6 +45,12 @@ Click **RUN 60-SECOND DEMO**. In approximately 60 seconds of active viewing it i
 
 The guide uses 30 m altitude, 4 m/s, a 60° assumed FOV and a 30 s cap: the actual calculated effective observation is approximately **8.66 s**. Its occlusion sweep keeps these physical inputs fixed. Narrated failure boundaries come from completed results, rather than stored claims about either profile.
 
+## Paired SAR flyover video (experimental preview)
+
+In **SAR / Search & rescue**, choose **SYNCHRONIZED VIDEO PAIR** above the field preview. Select the local 10-second RGB and synthetic LWIR MP4 files using the two file pickers; they remain on the user's device and are never uploaded. The source switch preserves the original reference-frame lab. The video viewer offers **RGB**, **LWIR**, and **RGB + LWIR**, with a shared play/pause, rewind and seek timeline. The reference pair is 1280 × 720, 30 fps, 300 frames per channel; compare mode requires matching duration and image dimensions. The code does not bundle or host the media files.
+
+**Important boundary:** The existing A/B scores, annotations, report exports and observation geometry still refer to the original synthetic scene engine, **not analysis of the MP4 files**. Fog, smoke, occlusion and RGB darkness are illustrative playback overlays. Changing altitude or flight speed does not alter a recorded video's geometry or duration. These videos contain no independently validated thermal readings or model inference. A future video benchmark needs frame-level ground truth, frame/time registration and an actual detector.
+
 ## Field imagery and annotations
 
 Six optimized WebP assets provide photorealistic generated RGB scenes and corresponding synthetic thermal representations at 1672 × 941 pixels. [Imagery provenance](docs/imagery.md) and [generation prompts](assets/scene-prompts.json) document their origin. `scenarios.js` contains image-specific normalized `[x, y, width, height]` annotations reviewed across the paired views. Ground truth, model predictions, misses and false alarms use separate layers in a shared image-coordinate frame.
