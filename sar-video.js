@@ -37,6 +37,7 @@
     '<div class="sar-video-lane sar-video-rgb"><video id="sar-rgb" muted playsinline preload="metadata" aria-label="RGB aerial recording"></video><span>RGB / SOURCE</span><div class="sar-video-haze"></div><div class="sar-video-fog"></div><div class="sar-video-obscuration"></div></div>',
     '<div class="sar-video-lane sar-video-thermal"><video id="sar-thermal" muted playsinline preload="metadata" aria-label="Synthetic LWIR aerial recording"></video><span>LWIR / SYNTHETIC</span><div class="sar-video-haze"></div><div class="sar-video-fog"></div><div class="sar-video-obscuration"></div></div>',
     '<div id="sar-video-scan" class="sar-video-scan" aria-hidden="true" hidden></div>',
+    '<div id="sar-video-results" class="sar-video-results" role="status" aria-live="polite" hidden></div>',
     '<div id="sar-video-empty" class="sar-video-empty" role="status">Choose your synchronized RGB and LWIR MP4 files to start the video preview.</div>',
     '</div>',
     '<div class="sar-video-transport"><button id="sar-video-play" type="button" disabled>▶ Play</button>',
@@ -44,7 +45,7 @@
     '<output id="sar-video-clock">00:00 / 00:10</output>',
     '<button id="sar-video-restart" type="button" disabled aria-label="Rewind video">↺</button></div>',
     '<p id="sar-video-message" class="sar-video-message" role="status">Files remain on your device. No files are transferred to the server.</p>',
-    '<p class="sar-video-disclosure">VIDEO PREVIEW ONLY · The RGB/LWIR recording keeps its original camera path. Altitude adds an illustrative digital crop, without creating new detail. Fly-by speed and inverse visibility change playback pace, not measured flight speed. Fog, smoke, lighting and occlusion are display effects. The green sweep shows illustrative scan progress, not detections. Synthetic scores and geometry remain separate: no model inference runs on these clips. LWIR is synthetic, not measured radiometry.</p>'
+    '<p class="sar-video-disclosure">VIDEO PREVIEW ONLY · The RGB/LWIR recording keeps its original camera path. Altitude adds an illustrative digital crop, without creating new detail. Fly-by speed and inverse visibility change playback pace, not measured flight speed. Fog, smoke, lighting and occlusion are display effects. The green sweep shows illustrative scan progress. End-of-playback S01–S03 labels are synthetic results for the separate reference image; the clips are not frame-registered, so there are no target boxes or model detections on video. LWIR is synthetic, not measured radiometry.</p>'
   ].join('');
   field.after(stage);
 
@@ -53,7 +54,7 @@
   const input = {rgb: $('sar-rgb-upload'), thermal: $('sar-thermal-upload')};
   const urls = {rgb: null, thermal: null};
   const present = {rgb: false, thermal: false};
-  let source = 'frame', view = 'rgb', playing = false, raf = 0, hostedChecked = false;
+  let source = 'frame', view = 'rgb', playing = false, raf = 0, hostedChecked = false, modelWasRunning = false;
   const position = $('sar-video-seek');
   const picture = $('sar-video-picture');
   const message = $('sar-video-message');
@@ -62,6 +63,7 @@
   const playButton = $('sar-video-play');
   const restartButton = $('sar-video-restart');
   const scan = $('sar-video-scan');
+  const endResults = $('sar-video-results');
   const badge = $('sar-video-badge');
 
   const selectedDomain = () => document.querySelector('.domain.active')?.dataset.domain === 'SAR';
@@ -104,6 +106,31 @@
     playButton.textContent = '▶ Play';
     syncScan();
   }
+  function hideEndResults() { endResults.hidden = true; }
+  function referenceConfig(sensor) {
+    const value = id => Number($(id)?.value);
+    return globalThis.JudasEngine.normalize({
+      ...globalThis.JudasEngine.defaults, domain: 'SAR', sensor,
+      model: $('model').value, altitude: value('altitude'), speed: value('speed'),
+      occlusion: value('occlusion'), smoke: value('smoke'), fog: value('fog'),
+      light: $('light').value, observationCap: value('observationCap'),
+      seed: value('seed'), minRecall: value('minRecall'), maxFP: value('maxFP')
+    });
+  }
+  function showEndResults() {
+    if (source !== 'video' || !selectedDomain() || stage.hidden || !isReady() || !globalThis.JudasEngine) return;
+    const channels = view === 'split' ? ['RGB', 'THERMAL'] : [view === 'thermal' ? 'THERMAL' : 'RGB'];
+    endResults.innerHTML = '<strong>REFERENCE IMAGE / SYNTHETIC MODEL ' + $('model').value + '</strong>'
+      + '<div class="sar-video-result-columns">' + channels.map(sensor => {
+        const result = globalThis.JudasEngine.simulate(referenceConfig(sensor));
+        return '<div class="sar-video-result-channel"><span>' + (sensor === 'THERMAL' ? 'LWIR' : 'RGB')
+          + ' · ' + result.tp + '/' + result.persons.length + ' DETECTED · ' + result.status + '</span><div class="sar-video-result-targets">'
+          + result.persons.map(person => '<span class="' + (person.detected ? 'detected' : 'missed') + '">'
+            + person.id + ' · ' + (person.detected ? Math.round(person.confidence * 100) + '%' : 'MISSED') + '</span>').join('')
+          + '</div></div>';
+      }).join('') + '</div><small>Reference still only · no video inference or registered video boxes</small>';
+    endResults.hidden = false;
+  }
   function syncScan() {
     const active = source === 'video' && selectedDomain() && !stage.hidden;
     const modelRunning = active && !$('pause').disabled;
@@ -113,6 +140,9 @@
     scan.hidden = !(modelRunning || previewRunning);
     scan.style.setProperty('--scan-y', (progress * 100).toFixed(2) + '%');
     scan.dataset.scanProgress = progress.toFixed(3);
+    if (modelRunning) hideEndResults();
+    else if (modelWasRunning && active && !playing && $('result-status').textContent !== 'AWAITING TEST') showEndResults();
+    modelWasRunning = modelRunning;
   }
   function syncTransport() {
     const d = duration(), t = Math.min(getTime(), d);
@@ -129,6 +159,8 @@
     });
     syncTransport();
     syncScan();
+    if (next >= duration() - .015 && !playing) showEndResults();
+    else hideEndResults();
   }
   function pairedCompatible() {
     if (!present.rgb || !present.thermal) return false;
@@ -142,13 +174,14 @@
     if (present.rgb && present.thermal && Math.abs(slave.currentTime - m.currentTime) > .07) {
       try { slave.currentTime = m.currentTime; } catch { /* Not seekable yet. */ }
     }
-    if (m.ended || getTime() >= duration() - .015) { pause(); syncTransport(); return; }
+    if (m.ended || getTime() >= duration() - .015) { pause(); syncTransport(); if ($('pause').disabled) showEndResults(); return; }
     syncTransport();
     syncScan();
     raf = requestAnimationFrame(tick);
   }
   async function start() {
     if (!isReady()) return;
+    hideEndResults();
     if (present.rgb && present.thermal && !pairedCompatible()) {
       report('The files do not match in duration or resolution. Choose the synchronized pair (10 s, 1280 × 720).');
       return;
@@ -171,6 +204,7 @@
   function setView(next) {
     if (!['rgb', 'thermal', 'split'].includes(next)) return;
     if (playing) pause();
+    const resultsVisible = !endResults.hidden;
     view = next;
     syncPicture();
     syncTransport();
@@ -179,6 +213,7 @@
       const button = document.querySelector('[data-sensor="' + (next === 'rgb' ? 'RGB' : 'THERMAL') + '"]');
       if (button && !button.classList.contains('selected') && !button.disabled) button.click();
     }
+    if (resultsVisible) showEndResults();
   }
   function refreshSource() {
     const sar = selectedDomain();
@@ -191,7 +226,7 @@
       button.classList.toggle('active', active);
       button.setAttribute('aria-pressed', String(active));
     });
-    if (!on) pause();
+    if (!on) { pause(); hideEndResults(); }
     if (on) { syncPicture(); effects(); void loadHostedPair(); }
     syncScan();
   }
@@ -293,9 +328,10 @@
       }
     });
   });
-  document.addEventListener('input', effects);
-  document.addEventListener('change', effects);
-  document.addEventListener('judas:controls-updated', effects);
+  const controlsChanged = () => { effects(); hideEndResults(); };
+  document.addEventListener('input', controlsChanged);
+  document.addEventListener('change', controlsChanged);
+  document.addEventListener('judas:controls-updated', controlsChanged);
   const scanObserver = new MutationObserver(syncScan);
   scanObserver.observe($('progress'), {attributes: true, attributeFilter: ['style']});
   scanObserver.observe($('pause'), {attributes: true, attributeFilter: ['disabled'], childList: true});
