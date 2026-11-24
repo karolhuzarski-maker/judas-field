@@ -331,7 +331,11 @@
       }
     });
   });
-  const controlsChanged = () => { effects(); hideEndResults(); };
+  const controlsChanged = event => {
+    if (event.target === position) return;
+    effects();
+    hideEndResults();
+  };
   document.addEventListener('input', controlsChanged);
   document.addEventListener('change', controlsChanged);
   document.addEventListener('judas:controls-updated', controlsChanged);
