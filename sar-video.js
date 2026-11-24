@@ -157,6 +157,8 @@
     renderTracks();
   }
   function renderTracks() {
+    const cropScale = 1 + (120 - clamp(Number($('altitude').value), 15, 120)) / 105 * .30;
+    const cropInset = 360 * (1 - 1 / cropScale);
     for (const [channel, layer] of Object.entries(trackLayers)) {
       layer.hidden = source !== 'video' || !selectedDomain() || !bundledClip(channel);
       if (layer.hidden) continue;
@@ -164,7 +166,7 @@
       for (const track of tracks) {
         const {group, outline, labelBackground, label} = trackElements[channel].get(track.id);
         const top = track.y - panPixelsPerSecond * t;
-        const visibleTop = Math.max(0, top), visibleBottom = Math.min(720, top + track.height);
+        const visibleTop = Math.max(cropInset, top), visibleBottom = Math.min(720 - cropInset, top + track.height);
         const person = scores[channel].get(track.id);
         group.style.display = person && visibleBottom - visibleTop >= 20 ? '' : 'none';
         if (group.style.display) continue;
@@ -173,7 +175,7 @@
         const compact = view === 'split' || matchMedia('(max-width: 700px)').matches;
         const labelHeight = compact ? 38 : 26;
         const labelWidth = compact ? (detected ? 205 : 255) : (detected ? 132 : 170);
-        const labelY = visibleTop >= labelHeight + 2 ? visibleTop - labelHeight : visibleBottom + 3;
+        const labelY = visibleTop - labelHeight >= cropInset + 4 ? visibleTop - labelHeight : visibleBottom + 3;
         const x = track.x, w = track.width;
         group.classList.toggle('missed', !detected);
         outline.setAttribute('d', detected
