@@ -23,6 +23,9 @@
 .sar-video-thermal .sar-video-fog{background:linear-gradient(125deg,#8d919ac9,#666f73b8)}
 .sar-video-obscuration{opacity:0;background:radial-gradient(ellipse at 11% 18%,#06100deb 0 12%,transparent 33%),radial-gradient(ellipse at 80% 68%,#0a1816db 0 11%,transparent 31%)}
 .sar-video-thermal .sar-video-obscuration{background:radial-gradient(ellipse at 11% 18%,#14191ae5 0 12%,transparent 33%),radial-gradient(ellipse at 80% 68%,#151d1fe0 0 11%,transparent 31%)}
+.sar-video-scan{position:absolute;inset:0;z-index:3;pointer-events:none}
+.sar-video-scan::before{content:"";position:absolute;left:0;right:0;top:var(--scan-y,0%);height:12%;transform:translateY(-100%);background:linear-gradient(transparent,#81e1b52b)}
+.sar-video-scan::after{content:"";position:absolute;left:0;right:0;top:var(--scan-y,0%);height:2px;background:#b5e9da;box-shadow:0 0 10px #95e5bf,0 0 18px #95e5bf}
 .sar-video-empty{position:absolute;inset:0;z-index:5;background:#0e1519e8;display:flex;align-items:center;justify-content:center;color:#b6c6cf;padding:24px;text-align:center;font:12px/1.6 var(--mono)}
 .sar-video-transport{display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid #2a343c}
 .sar-video-transport button{font:10px var(--mono);padding:7px 10px;min-height:37px;background:#223038;border:1px solid #3b505b}
