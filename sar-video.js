@@ -170,8 +170,10 @@
         if (group.style.display) continue;
         const detected = person.detected;
         const labelText = track.id + ' · ' + (detected ? Math.round(person.confidence * 100) + '%' : 'MISSED');
-        const labelWidth = detected ? 132 : 170;
-        const labelY = visibleTop >= 28 ? visibleTop - 26 : visibleBottom + 3;
+        const compact = view === 'split' || matchMedia('(max-width: 700px)').matches;
+        const labelHeight = compact ? 38 : 26;
+        const labelWidth = compact ? (detected ? 205 : 255) : (detected ? 132 : 170);
+        const labelY = visibleTop >= labelHeight + 2 ? visibleTop - labelHeight : visibleBottom + 3;
         const x = track.x, w = track.width;
         group.classList.toggle('missed', !detected);
         outline.setAttribute('d', detected
@@ -180,9 +182,9 @@
         labelBackground.setAttribute('x', x);
         labelBackground.setAttribute('y', labelY);
         labelBackground.setAttribute('width', labelWidth);
-        labelBackground.setAttribute('height', 26);
+        labelBackground.setAttribute('height', labelHeight);
         label.setAttribute('x', x + 5);
-        label.setAttribute('y', labelY + 20);
+        label.setAttribute('y', labelY + (compact ? 30 : 20));
         label.textContent = labelText;
       }
     }
