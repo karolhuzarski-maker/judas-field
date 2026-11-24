@@ -52,7 +52,7 @@
   const input = {rgb: $('sar-rgb-upload'), thermal: $('sar-thermal-upload')};
   const urls = {rgb: null, thermal: null};
   const present = {rgb: false, thermal: false};
-  let source = 'frame', view = 'rgb', playing = false, raf = 0;
+  let source = 'frame', view = 'rgb', playing = false, raf = 0, hostedChecked = false;
   const position = $('sar-video-seek');
   const picture = $('sar-video-picture');
   const message = $('sar-video-message');
@@ -175,7 +175,7 @@
       button.setAttribute('aria-pressed', String(active));
     });
     if (!on) pause();
-    if (on) { syncPicture(); effects(); }
+    if (on) { syncPicture(); effects(); void loadHostedPair(); }
   }
   function effects() {
     const value = id => Number($(id)?.value) || 0;
@@ -192,6 +192,25 @@
       lane.querySelector('.sar-video-fog').style.opacity = String(fog * (thermal ? .45 : .8));
       lane.querySelector('.sar-video-obscuration').style.opacity = String(occlusion * .55);
     });
+  }
+  async function loadHostedPair() {
+    if (hostedChecked) return;
+    hostedChecked = true;
+    const files = { rgb: './assets/videos/sar-rgb.mp4', thermal: './assets/videos/sar-lwir.mp4' };
+    const checks = await Promise.all(Object.entries(files).map(async ([channel, path]) => {
+      try {
+        const response = await fetch(path, { method: 'HEAD' });
+        const type = response.headers.get('content-type') || '';
+        return { channel, path, ok: response.ok && (type.includes('video/') || type.includes('octet-stream')) };
+      } catch { return { channel, path, ok: false }; }
+    }));
+    for (const { channel, path, ok } of checks) {
+      if (!ok || present[channel] || input[channel].files?.length) continue;
+      videos[channel].src = path;
+      videos[channel].load();
+    }
+    if (checks.every(entry => entry.ok)) report('GitHub-hosted RGB/LWIR files found. Loading synchronized pair automatically.');
+    else report('Videos are not yet hosted in this repository. Use the file selectors or upload both MP4 files to assets/videos/ on GitHub.');
   }
   function acceptFile(channel, file) {
     if (!file) return;
