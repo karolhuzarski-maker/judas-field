@@ -1,0 +1,44 @@
+/* Optional SAR video preview. Original synthetic image and scoring remain intact. */
+.sar-video-source{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 13px;background:#10171d;border-bottom:1px solid #28333b}
+.sar-video-source-buttons,.sar-video-views{display:flex;flex-wrap:wrap;gap:3px;background:#0d1216;padding:3px;border:1px solid #303941}
+.sar-video-source button,.sar-video-views button{background:transparent;border:1px solid transparent;color:#8f9ea9;font:9px var(--mono);letter-spacing:.5px;padding:8px 11px;min-height:35px}
+.sar-video-source button.active,.sar-video-views button.active{color:#d0eff0;background:#273b42;border-color:#3d6469}
+.sar-video-source-caption,.sar-video-badge{font:9px var(--mono);color:#889ca8;letter-spacing:.5px}
+.sar-video-stage{background:#10161b;isolation:isolate}
+.sar-video-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:10px 13px;background:#10171c}
+.sar-video-files{display:flex;flex-wrap:wrap;gap:12px;background:#111a20;border-top:1px solid #29353c;padding:10px 13px}
+.sar-video-files label{display:flex;align-items:center;gap:8px;font:9px var(--mono);color:#a1bdc7}
+.sar-video-files input{width:198px;max-width:100%;font:9px var(--mono);color:#a7b9c4}
+.sar-video-files input::file-selector-button{font:9px var(--mono);border:1px solid #41515a;background:#242f37;color:#d5e2e8;cursor:pointer;padding:7px;margin-right:7px}
+.sar-video-picture{position:relative;background:#050709;display:flex;width:100%;aspect-ratio:16/9;overflow:hidden}
+.sar-video-lane{min-width:0;position:relative;flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#050708}
+.sar-video-lane video{width:100%;height:100%;display:block;object-fit:contain}
+.sar-video-lane>span{position:absolute;top:10px;left:10px;z-index:4;background:#050709ac;color:#d4e1e7;padding:5px 7px;font:9px var(--mono);letter-spacing:.5px}
+.sar-view-rgb .sar-video-thermal,.sar-view-thermal .sar-video-rgb{display:none}
+.sar-view-split{aspect-ratio:32/9}
+.sar-view-split .sar-video-lane+.sar-video-lane{border-left:2px solid #80a8b3}
+.sar-video-haze,.sar-video-fog,.sar-video-obscuration{pointer-events:none;position:absolute;inset:0;z-index:2;transition:opacity .12s}
+.sar-video-haze{opacity:0;background:radial-gradient(ellipse at 25% 75%,#b7b6b6 0,transparent 62%),radial-gradient(ellipse at 76% 20%,#b9babe 0,transparent 60%);filter:blur(18px)}
+.sar-video-fog{opacity:0;background:linear-gradient(123deg,#c0cbcfb8,#a3b7c6a0)}
+.sar-video-thermal .sar-video-fog{background:linear-gradient(125deg,#8d919ac9,#666f73b8)}
+.sar-video-obscuration{opacity:0;background:radial-gradient(ellipse at 11% 18%,#06100deb 0 12%,transparent 33%),radial-gradient(ellipse at 80% 68%,#0a1816db 0 11%,transparent 31%)}
+.sar-video-thermal .sar-video-obscuration{background:radial-gradient(ellipse at 11% 18%,#14191ae5 0 12%,transparent 33%),radial-gradient(ellipse at 80% 68%,#151d1fe0 0 11%,transparent 31%)}
+.sar-video-empty{position:absolute;inset:0;z-index:5;background:#0e1519e8;display:flex;align-items:center;justify-content:center;color:#b6c6cf;padding:24px;text-align:center;font:12px/1.6 var(--mono)}
+.sar-video-transport{display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid #2a343c}
+.sar-video-transport button{font:10px var(--mono);padding:7px 10px;min-height:37px;background:#223038;border:1px solid #3b505b}
+.sar-video-transport button:disabled{opacity:.4}
+.sar-video-transport input{flex:1;min-width:40px;accent-color:#d83642}
+.sar-video-transport output{font:9px var(--mono);color:#b5c6cf;white-space:nowrap}
+.sar-video-message{padding:4px 14px 9px;font:10px/1.5 var(--mono);color:#a3c8c9}
+.sar-video-disclosure{padding:10px 14px 14px;border-top:1px solid #263039;font:10px/1.6 var(--mono);color:#8e9ea8}
+@media(max-width:700px){
+ .sar-video-source{padding:9px;gap:8px}
+ .sar-video-source-caption{font-size:8px}
+ .sar-video-header{padding:9px}
+ .sar-video-files input{width:158px}
+ .sar-video-picture.sar-view-split{display:block;aspect-ratio:auto}
+ .sar-view-split .sar-video-lane{width:100%;aspect-ratio:16/9}
+ .sar-view-split .sar-video-lane+.sar-video-lane{border-left:0;border-top:2px solid #80a8b3}
+ .sar-video-transport{gap:6px;padding:9px}
+ .sar-video-transport output{font-size:8px}
+}
