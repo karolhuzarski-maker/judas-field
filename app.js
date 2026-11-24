@@ -45,6 +45,7 @@
     ['model','light','seed','minRecall','maxFP'].forEach(key => $(key).value=state.config[key]);
     document.querySelectorAll('[data-domain]').forEach(b => {const active=b.dataset.domain===state.config.domain;b.classList.toggle('active',active);b.setAttribute('aria-pressed',active);});
     document.querySelectorAll('[data-sensor]').forEach(b => {const active=b.dataset.sensor===state.config.sensor;b.classList.toggle('selected',active);b.setAttribute('aria-pressed',active);});
+    document.dispatchEvent?.(new Event('judas:controls-updated'));
   }
   function renderGeometry() {
     const container=$('observation-geometry');

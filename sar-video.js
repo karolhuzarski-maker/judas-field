@@ -268,6 +268,7 @@
   });
   document.addEventListener('input', effects);
   document.addEventListener('change', effects);
+  document.addEventListener('judas:controls-updated', effects);
   addEventListener('beforeunload', () => { pause(); Object.values(urls).forEach(url => {if (url) URL.revokeObjectURL(url);}); });
   refreshSource();
   syncPicture();
