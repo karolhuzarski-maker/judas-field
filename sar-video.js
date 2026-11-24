@@ -54,7 +54,7 @@
   const input = {rgb: $('sar-rgb-upload'), thermal: $('sar-thermal-upload')};
   const urls = {rgb: null, thermal: null};
   const present = {rgb: false, thermal: false};
-  let source = 'frame', view = 'rgb', playing = false, raf = 0, hostedChecked = false, modelWasRunning = false;
+  let source = 'frame', view = 'rgb', playing = false, raf = 0, hostedChecked = false;
   const position = $('sar-video-seek');
   const picture = $('sar-video-picture');
   const message = $('sar-video-message');
@@ -218,8 +218,6 @@
     scan.style.setProperty('--scan-y', (progress * 100).toFixed(2) + '%');
     scan.dataset.scanProgress = progress.toFixed(3);
     if (modelRunning) hideEndResults();
-    else if (modelWasRunning && active && !playing && $('result-status').textContent !== 'AWAITING TEST') showEndResults();
-    modelWasRunning = modelRunning;
   }
   function syncTransport() {
     const d = duration(), t = Math.min(getTime(), d);
